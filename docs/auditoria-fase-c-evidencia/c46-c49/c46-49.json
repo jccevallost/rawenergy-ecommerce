@@ -1,0 +1,214 @@
+[
+ {
+  "flow": "descuento",
+  "step": "la franja anuncia el código",
+  "ok": true,
+  "strip": "10 % en tu primera compra con el código BIENVENIDA10Express gratis desde $75,00 en Quito y VallesExpress 4 h en Quito y VallesCompra sin crear cuenta"
+ },
+ {
+  "flow": "tarjetas",
+  "step": "tamaños y sabores en vez de «N presentaciones»",
+  "ok": true,
+  "gold": [
+   "2 lb · 5 lb · 2 sabores",
+   "Desde $59,90 · 2 lb",
+   "Disponible"
+  ],
+  "psychotic": [
+   "35 porciones · 3 sabores",
+   "$44,90",
+   "Disponible"
+  ],
+  "creatina": [
+   "",
+   "$34,90",
+   "Disponible · 300 g"
+  ]
+ },
+ {
+  "flow": "tarjetas",
+  "step": "«Desde» dice de qué tamaño es",
+  "ok": true,
+  "precio": "Desde $59,90 · 2 lb"
+ },
+ {
+  "flow": "búsqueda",
+  "step": "«gold whey» encuentra Gold Standard 100% Whey",
+  "ok": true,
+  "resultados": [
+   "Gold Standard 100% Whey",
+   "Nitro-Tech 100% Whey Gold"
+  ]
+ },
+ {
+  "flow": "búsqueda",
+  "step": "«creatina 300 g» trae solo creatinas de 300 g",
+  "ok": true,
+  "resultados": [
+   "Creatine Monohydrate",
+   "Micronized Creatine Powder"
+  ]
+ },
+ {
+  "flow": "búsqueda",
+  "step": "busca por sabor",
+  "ok": true,
+  "vanilla": [
+   "Gold Standard 100% Whey",
+   "Gold Standard 100% Isolate",
+   "Serious Mass",
+   "CBUM Itholate Protein"
+  ],
+  "vainilla": []
+ },
+ {
+  "flow": "ficha",
+  "step": "un sabor sin fotos muestra la foto del mismo tamaño",
+  "ok": true,
+  "src": "http://localhost:4000/media/6cf12b1471231c580dcec9c94692db2d"
+ },
+ {
+  "flow": "descuento",
+  "step": "el carrito sugiere el código y el paso de entrega aplica −10 %",
+  "ok": true,
+  "hint": "¿Primera compra? Usa el código BIENVENIDA10 en el siguiente paso: 10 % de descuento.",
+  "line": "Descuento BIENVENIDA10 (10 %)−$5,99",
+  "total": "$57,91"
+ },
+ {
+  "flow": "descuento",
+  "step": "axe con el código aplicado",
+  "ok": true,
+  "fallos": []
+ },
+ {
+  "flow": "descuento",
+  "step": "pedido con descuento: confirmación y WhatsApp lo muestran",
+  "ok": true,
+  "confirmacion": "Descuento BIENVENIDA10 (10 %)−$5,99"
+ },
+ {
+  "flow": "descuento",
+  "step": "la misma persona (misma cédula) no lo usa dos veces: aviso, se quita y el total se actualiza",
+  "ok": true,
+  "msg": "El código BIENVENIDA10 es solo para la primera compra. Quitamos el descuento: revisa el total y confirma de nuevo.",
+  "total": "$63,90",
+  "foco": "discount-message",
+  "antes": "$57,91"
+ },
+ {
+  "flow": "descuento",
+  "step": "puede confirmar sin descuento",
+  "ok": true
+ },
+ {
+  "flow": "descuento",
+  "step": "un código inexistente se explica sin aplicar nada",
+  "ok": true,
+  "badMsg": "El código NOEXISTE no existe o ya no está vigente."
+ },
+ {
+  "flow": "unión",
+  "step": "producto de 1 kg creado aparte (como en Atlas)",
+  "ok": true
+ },
+ {
+  "flow": "panel",
+  "step": "«Pagos y envíos» tiene el descuento de bienvenida",
+  "ok": true
+ },
+ {
+  "flow": "unión",
+  "step": "ventana accesible: foco dentro, sabor propuesto y resumen",
+  "ok": true,
+  "foco": "SELECT",
+  "flavor": "Sin sabor",
+  "summary": "«Creatine Monohydrate» quedará con: 300 g · 1 kg.",
+  "axe": []
+ },
+ {
+  "flow": "unión",
+  "step": "el panel confirma la unión",
+  "ok": true,
+  "okText": "«Creatina Monohidratada Dragon Pharma 1 kg» ahora es una presentación de «Creatine Monohydrate»."
+ },
+ {
+  "flow": "fotos por tamaño",
+  "step": "el editor agrupa por tamaño",
+  "ok": true,
+  "groups": [
+   {
+    "size": "2 lb",
+    "info": "Double Rich Chocolate",
+    "fotos": 2
+   },
+   {
+    "size": "5 lb",
+    "info": "2 sabores: Double Rich Chocolate, Vanilla Ice Cream",
+    "fotos": 0
+   }
+  ]
+ },
+ {
+  "flow": "fotos por tamaño",
+  "step": "«Subir fotos de 2 lb» se alcanza con teclado y muestra el foco",
+  "ok": true,
+  "ring": "solid"
+ },
+ {
+  "flow": "fotos por tamaño",
+  "step": "una foto elegida para 5 lb queda en los dos sabores de 5 lb",
+  "ok": true,
+  "before5": [
+   [
+    "http://localhost:4000/media/6cf12b1471231c580dcec9c94692db2d?size=thumb"
+   ],
+   []
+  ],
+  "after": [
+   {
+    "size": "2 lb",
+    "fotos": 2
+   },
+   {
+    "size": "5 lb",
+    "fotos": 1
+   }
+  ],
+  "perFlavor": [
+   "Double Rich Chocolate: 2",
+   "Double Rich Chocolate: 2",
+   "Vanilla Ice Cream: 1"
+  ]
+ },
+ {
+  "flow": "fotos por tamaño",
+  "step": "axe en el editor con fotos por tamaño",
+  "ok": true,
+  "fallos": [
+   "color-contrast(32)"
+  ]
+ },
+ {
+  "flow": "unión",
+  "step": "la tienda muestra una sola tarjeta con 300 g y 1 kg",
+  "ok": true,
+  "cards": [
+   "Creatine Monohydrate | 300 g · 1 kg",
+   "Psychotic | 35 porciones · 2 sabores",
+   "Micronized Creatine Powder | 300 g · 600 g",
+   "Platinum 100% Creatine | Disponible · 400 g",
+   "Outlift | 20 porciones · 3 sabores",
+   "EVP-3D | 40 porciones · 2 sabores"
+  ]
+ },
+ {
+  "flow": "unión",
+  "step": "la ficha ofrece los dos tamaños",
+  "ok": true,
+  "sizes": [
+   "300 g",
+   "1 kg"
+  ]
+ }
+]

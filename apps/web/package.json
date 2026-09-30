@@ -1,0 +1,28 @@
+{
+  "name": "@vital-forge/web",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5173",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b --pretty false",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@apollo/client": "^3.13.8",
+    "@vital-forge/shared-logic": "*",
+    "@vital-forge/ui-core": "*",
+    "graphql": "^16.11.0",
+    "lucide-react": "^0.511.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.5",
+    "@vitejs/plugin-react": "^4.5.1",
+    "vite": "^6.3.5",
+    "vitest": "^3.2.4"
+  }
+}

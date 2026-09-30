@@ -1,0 +1,39 @@
+/* Pagos y envíos (fase C, C20). */
+.commerce-panel { margin-top: 28px; padding: 22px; border: 1px solid var(--line); border-radius: 14px; background: white; }
+.commerce-panel > header h2 { margin: 0 0 6px; font-size: 20px; }
+.commerce-panel > header p { margin: 0 0 14px; color: #5f6858; font-size: 13px; line-height: 1.5; }
+.commerce-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.commerce-card { display: grid; gap: 10px; align-content: start; margin: 0; padding: 14px; border: 1px solid var(--line); border-radius: 12px; min-width: 0; }
+.commerce-card legend { display: flex; align-items: center; gap: 6px; padding: 0 4px; font-size: 13px; font-weight: 800; }
+.commerce-card label { display: grid; gap: 5px; font-size: 12px; font-weight: 700; }
+.commerce-card label small { font-weight: 500; color: #6b7466; }
+.commerce-card input:not([type=checkbox]), .commerce-card select { min-height: 40px; padding: 8px 10px; border: 1px solid #7a8471; border-radius: 8px; background: white; font-size: 14px; font-weight: 400; }
+.commerce-hint { margin: 0; font-size: 12px; line-height: 1.5; color: #4d5647; }
+.cod-badge { color: #7a4d00; }
+@media (max-width: 1100px) { .commerce-grid { grid-template-columns: 1fr; } }
+/* Interruptores legibles: el estilo global de .switch-row es del editor de productos (texto de 8–10 px). */
+.commerce-card label.switch-row { display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 12px; padding: 12px; border-radius: 10px; }
+.commerce-card .switch-row > span b { font-size: 13px; color: var(--ink); }
+.commerce-card .switch-row > span small { font-size: 12px; }
+.commerce-card .switch-row input { flex: none; width: 42px !important; height: 24px; min-height: 24px !important; border: 1px solid #7a8471; }
+.commerce-card .switch-row input:after { width: 18px; height: 18px; top: 2px; left: 2px; }
+.commerce-card .switch-row input:checked:after { left: 19px; }
+.commerce-card .switch-row input:disabled { opacity: .5; cursor: not-allowed; }
+/* Avisos de pedidos (C24). */
+.notifications-panel > header h2 { display: flex; align-items: center; gap: 8px; }
+.notification-failures { display: grid; gap: 8px; margin: 12px 0; padding: 0; list-style: none; }
+.notification-failures li { display: grid; gap: 3px; padding: 10px 12px; border: 1px solid #f0c6b3; border-radius: 10px; background: #fff7f2; font-size: 13px; }
+.notification-failures small { color: #6b4a3c; overflow-wrap: anywhere; }
+/* Métodos con envío gratis (C31). */
+.free-methods { display: grid; gap: 4px; margin: 0; padding: 0; border: 0; }
+.free-methods legend { padding: 0; font-size: 12px; font-weight: 700; }
+.free-methods .checkbox-label { margin: 4px 0; }
+.commerce-card .free-methods label.checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+/* Contra entrega por confirmar (C36). */
+.cod-pending { display: grid; gap: 8px; margin: 10px 0; padding: 12px; border: 1px solid #f0d49a; border-radius: 10px; background: #fff8e8; font-size: 13px; }
+.cod-pending p { margin: 0; line-height: 1.5; }
+.cod-pending label { display: grid; gap: 5px; font-size: 12px; font-weight: 700; }
+.cod-pending input { min-height: 38px; padding: 8px 10px; border: 1px solid #7a8471; border-radius: 8px; font-size: 14px; font-weight: 400; }
+.cod-pending .publish { justify-self: start; min-height: 40px; padding: 0 16px; border-radius: 8px; font-weight: 700; }
+.cod-confirmed { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; font-size: 13px; color: #2d6a1e; }
+.discount-badge { color: #2f6b1f; }

@@ -1,0 +1,78 @@
+# Blueprint de Render para la API de RawEnergy EC.
+# El repositorio es un monorepo npm workspaces: se instala en la raiz y se
+# compila solo el workspace de la API.
+services:
+  - type: web
+    name: rawenergy-api
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm ci && npm run build --workspace @vital-forge/api
+    startCommand: node apps/api/dist/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render genera el secreto una sola vez y lo conserva entre despliegues.
+      - key: AUTH_TOKEN_SECRET
+        generateValue: true
+      - key: FREE_SHIPPING_THRESHOLD
+        value: 75
+      # sync:false = se cargan a mano en el panel y no viajan en el repositorio.
+      - key: MONGODB_URI
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      # Dominios de Netlify de la tienda y del panel, separados por coma.
+      - key: CORS_ORIGINS
+        sync: false
+      # Dominio publico de este servicio. Se usa para armar las URL de las
+      # fotos que se sirven desde /media.
+      - key: PUBLIC_API_URL
+        sync: false
+      # Correo saliente. Sirve cualquier proveedor SMTP.
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: MAIL_OPERATOR
+        sync: false
+      - key: STORE_NAME
+        value: RawEnergy EC
+      # WhatsApp de la tienda (público: se muestra en la web para enviar comprobantes).
+      - key: STORE_WHATSAPP
+        value: "593983368127"
+      # Identidad legal para las políticas (LOPDP): razón social, RUC (13 dígitos),
+      # dirección y correo de contacto. Si faltan, las páginas legales no los muestran.
+      - key: STORE_LEGAL_NAME
+        sync: false
+      - key: STORE_RUC
+        sync: false
+      - key: STORE_ADDRESS
+        sync: false
+      - key: STORE_CONTACT_EMAIL
+        sync: false
+      # Datos de la transferencia que viajan en el correo de confirmacion.
+      - key: BANK_NAME
+        sync: false
+      - key: BANK_ACCOUNT_TYPE
+        sync: false
+      - key: BANK_ACCOUNT_NUMBER
+        sync: false
+      - key: BANK_HOLDER
+        sync: false
+      - key: BANK_DOCUMENT
+        sync: false
+      # Aviso al operador por Telegram.
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false

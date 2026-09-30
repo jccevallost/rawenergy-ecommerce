@@ -1,0 +1,18 @@
+const slug=(s:string)=>s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+export const importColumns=["identificador","nombre","marca","descripcion","tipo","categorias","objetivos","sabor","tamano","unidad","sku","precio","stock","minimo","imagenes","porcion","calorias","proteina","carbohidratos","grasas"];
+export function parseCsv(raw:string):string[][] {
+ const text=raw.replace(/^\uFEFF/,"");const delimiter=text.split(/\r?\n/,1)[0]?.includes(";")?";":",";const rows:string[][]=[];let row:string[]=[];let cell="";let quoted=false;
+ for(let i=0;i<text.length;i++){const c=text[i];if(c==='"'){if(quoted&&text[i+1]==='"'){cell+='"';i++;}else if(quoted||!cell)quoted=!quoted;else throw new Error("Comillas inválidas en CSV");}else if(c===delimiter&&!quoted){row.push(cell);cell="";}else if((c==="\n"||c==="\r")&&!quoted){if(c==="\r"&&text[i+1]==="\n")i++;row.push(cell);if(row.some(Boolean))rows.push(row);row=[];cell="";}else cell+=c;}
+ if(quoted)throw new Error("El CSV tiene comillas sin cerrar");row.push(cell);if(row.some(Boolean))rows.push(row);return rows;
+}
+export function prepareImport(rows:unknown[][]) {
+ if(rows.length<2)throw new Error("El archivo no contiene productos");if(rows.length>1001)throw new Error("Máximo 1000 filas y 200 productos por archivo");
+ const headers=rows[0]!.map(v=>String(v??"").trim().toLowerCase());if(new Set(headers).size!==headers.length)throw new Error("Hay columnas repetidas");
+ for(const required of importColumns.slice(0,14))if(!headers.includes(required))throw new Error(`Falta la columna ${required}. Usa la plantilla.`);
+ const groups=new Map<string,{payload:ReturnType<typeof productRow>;rows:number[]}>();
+ function productRow(row:unknown[],line:number){const get=(key:string)=>String(row[headers.indexOf(key)]??"").trim();const declared=(key:string)=>get(key)===""?null:num(key);const num=(key:string,fallback=0)=>{const raw=get(key);const n=raw?Number(raw.replace(",",".")):fallback;if(!Number.isFinite(n))throw new Error(`Fila ${line}: ${key} debe ser numérico`);return n;};const refs=(key:string)=>get(key).split("|").map(n=>n.trim()).filter(Boolean).map(name=>({name,slug:slug(name)}));
+  return {title:get("nombre"),slug:get("identificador"),brand:get("marca"),shortDescription:get("descripcion"),productType:get("tipo").toUpperCase(),categories:refs("categorias"),goals:refs("objetivos"),nutritionalFacts:get("tipo").toUpperCase()==="SUPPLEMENT"?{servingSize:get("porcion"),calories:declared("calorias"),protein:declared("proteina"),carbohydrates:declared("carbohidratos"),fats:declared("grasas")}:null,vitalCoinsReward:0,maxInstallments:1,hasFreeShipping:false,storeBadges:[],featured:false,variants:[{flavor:get("sabor"),size:{value:num("tamano"),unit:get("unidad")},sku:get("sku"),price:num("precio"),stock:num("stock"),reorderPoint:num("minimo",5),images:get("imagenes").split("|").filter(Boolean).map(url=>({url,alt:get("nombre")}))}]};
+ }
+ rows.slice(1).forEach((row,i)=>{if(!row.some(v=>v!==null&&v!==""))return;const payload=productRow(row,i+2);const current=groups.get(payload.slug);if(current){const{variants:a,...first}=current.payload;const{variants:b,...next}=payload;if(JSON.stringify(first)!==JSON.stringify(next))throw new Error(`Fila ${i+2}: los datos generales del identificador ${payload.slug} no coinciden`);current.payload.variants.push(...payload.variants);current.rows.push(i+2);}else groups.set(payload.slug,{payload,rows:[i+2]});});
+ if(!groups.size||groups.size>200)throw new Error("El archivo debe contener entre 1 y 200 productos");return [...groups.values()];
+}

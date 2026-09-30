@@ -1,0 +1,15 @@
+import type { UserRole } from "@vital-forge/shared-logic";
+import { House, Package, Tags, Image, ShoppingBag, Warehouse, Truck, Users, ChartNoAxesCombined, ShieldCheck, Database, Settings, KeyRound, ArrowLeftRight, ClipboardList, Megaphone } from "lucide-react";
+export type Section = "home" | "products" | "campaigns" | "taxonomy" | "media" | "orders" | "inventory" | "purchases" | "suppliers" | "warehouses" | "movements" | "management" | "expenses" | "customers" | "audit" | "database" | "settings" | "security" | "import";
+const allStaff: UserRole[] = ["ADMIN", "CATALOG", "WAREHOUSE", "MANAGER"];
+export const navigation: Array<{ group: string; items: Array<{ id: Section; label: string; icon: typeof House; roles: UserRole[] }> }> = [
+ { group: "Tu día", items: [{ id: "home", label: "Inicio", icon: House, roles: allStaff }] },
+ { group: "Catálogo y ventas", items: [{ id: "products", label: "Productos", icon: Package, roles: allStaff }, { id: "campaigns", label: "Campañas de portada", icon: Megaphone, roles: ["ADMIN", "CATALOG"] }, { id: "taxonomy", label: "Categorías y marcas", icon: Tags, roles: ["ADMIN", "CATALOG"] }, { id: "media", label: "Fotografías", icon: Image, roles: ["ADMIN", "CATALOG"] }, { id: "orders", label: "Pedidos", icon: ShoppingBag, roles: ["ADMIN", "WAREHOUSE", "MANAGER"] }] },
+ { group: "Inventario y compras", items: [{ id: "inventory", label: "Stock y reposición", icon: Warehouse, roles: ["ADMIN", "WAREHOUSE", "MANAGER"] }, { id: "purchases", label: "Órdenes de compra", icon: ClipboardList, roles: ["ADMIN", "WAREHOUSE", "MANAGER"] }, { id: "suppliers", label: "Proveedores", icon: Truck, roles: ["ADMIN", "WAREHOUSE", "MANAGER"] }, { id: "warehouses", label: "Bodegas y lotes", icon: Warehouse, roles: ["ADMIN", "WAREHOUSE", "MANAGER"] }, { id: "movements", label: "Movimientos", icon: ArrowLeftRight, roles: ["ADMIN", "WAREHOUSE", "MANAGER"] }] },
+ { group: "Gerencia", items: [{ id: "management", label: "Ventas y resultados", icon: ChartNoAxesCombined, roles: ["ADMIN", "MANAGER"] }, { id: "expenses", label: "Gastos del negocio", icon: ClipboardList, roles: ["ADMIN", "MANAGER"] }] },
+ { group: "Sistema", items: [{ id: "customers", label: "Usuarios y permisos", icon: Users, roles: ["ADMIN"] }, { id: "audit", label: "Auditoría", icon: ShieldCheck, roles: ["ADMIN", "MANAGER"] }, { id: "database", label: "Base de datos", icon: Database, roles: ["ADMIN"] }, { id: "settings", label: "Configuración", icon: Settings, roles: ["ADMIN"] }, { id: "security", label: "Mi acceso", icon: KeyRound, roles: allStaff }] }
+];
+export const roleLabels: Record<UserRole, string> = { ADMIN: "Administrador", CATALOG: "Catálogo", WAREHOUSE: "Inventario y pedidos", MANAGER: "Gerencia", CUSTOMER: "Cliente" };
+export const canEditCatalog = (role: UserRole) => role === "ADMIN" || role === "CATALOG";
+export const canEditStock = (role: UserRole) => role === "ADMIN" || role === "WAREHOUSE";
+export function sectionLabel(section: Section) { return section === "import" ? "Importar productos" : navigation.flatMap((g) => g.items).find((i) => i.id === section)?.label ?? "Inicio"; }

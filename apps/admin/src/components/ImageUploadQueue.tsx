@@ -1,0 +1,11 @@
+import { useRef, useState } from "react";
+import { uploadImage } from "../lib/uploadImage";
+type Task={id:string;file:File;target:string;progress:number;state:"waiting"|"uploading"|"done"|"error";error?:string};
+export function useImageQueue(onUploaded:(url:string,target:string)=>void,onBusyChange?:(busy:boolean)=>void){
+ const[tasks,setTasks]=useState<Task[]>([]);const pending=useRef<Task[]>([]);const running=useRef(false);const latest=useRef({onUploaded,onBusyChange});latest.current={onUploaded,onBusyChange};
+ const update=(id:string,patch:Partial<Task>)=>setTasks(rows=>rows.map(t=>t.id===id?{...t,...patch}:t));
+ const drain=async()=>{if(running.current)return;running.current=true;latest.current.onBusyChange?.(true);try{while(pending.current.length){const t=pending.current.shift()!;update(t.id,{state:"uploading",error:undefined});try{const url=await uploadImage(t.file,progress=>update(t.id,{progress}));latest.current.onUploaded(url,t.target);update(t.id,{state:"done",progress:100});}catch(e){update(t.id,{state:"error",error:e instanceof Error?e.message:"No se pudo subir"});}}}finally{running.current=false;latest.current.onBusyChange?.(false);}};
+ const add=(files:File[],target="")=>{const next=files.map(file=>({id:crypto.randomUUID(),file,target,progress:0,state:"waiting" as const}));pending.current.push(...next);setTasks(rows=>[...rows.filter(t=>t.state!=="done"),...next]);void drain();};
+ const retry=(task:Task)=>{if(task.state!=="error"||pending.current.some(t=>t.id===task.id))return;update(task.id,{state:"waiting",progress:0});pending.current.push(task);void drain();};
+ return {add,busy:tasks.some(t=>t.state==="waiting"||t.state==="uploading"),view:tasks.length?<div className="upload-queue" aria-live="polite"><h3>Subida de fotografías</h3>{tasks.map(t=><div className="upload-task" key={t.id}><div><b>{t.file.name}</b><small>{t.state==="done"?"Lista":t.state==="error"?t.error:t.state==="waiting"?"En espera":t.progress<10?"Optimizando imagen…":t.progress>=95?"Guardando…":`Subiendo ${t.progress}%`}</small></div><progress aria-label={`Progreso de ${t.file.name}`} max={100} value={t.progress}/>{t.state==="error"&&<button type="button" onClick={()=>retry(t)}>Reintentar</button>}</div>)}</div>:null};
+}

@@ -1,0 +1,173 @@
+[
+ {
+  "flow": "galería",
+  "step": "control de la galería alcanzable",
+  "ok": true,
+  "label": "Ampliar foto 1 de 2",
+  "presses": 18
+ },
+ {
+  "flow": "galería",
+  "step": "Enter en la foto",
+  "ok": true,
+  "visor": 1,
+  "foco": "Foto 1 de 2",
+  "enDialogo": true
+ },
+ {
+  "flow": "galería",
+  "step": "Escape cierra el visor y devuelve el foco",
+  "ok": true,
+  "foco": "Ampliar foto 2 de 2"
+ },
+ {
+  "flow": "ficha",
+  "step": "grupo de sabor/tamaño alcanzable con Tab",
+  "ok": true,
+  "campo": "sabor",
+  "etiqueta": "Double Rich Chocolate",
+  "presses": 24
+ },
+ {
+  "flow": "ficha",
+  "step": "flecha cambia la opción del grupo",
+  "ok": true,
+  "foco": "Vanilla Ice Cream"
+ },
+ {
+  "flow": "ficha",
+  "step": "«Agregar al carrito» alcanzable",
+  "ok": true,
+  "presses": 3
+ },
+ {
+  "flow": "carrito",
+  "step": "tras agregar: qué ocurre",
+  "ok": true,
+  "carritoAbierto": 0,
+  "foco": "Agregado ✓",
+  "avisos": [
+   "Producto agregado al carrito.",
+   "Agregaste 1 × Gold Standard 100% Whey al carrito.Ver carrito"
+  ]
+ },
+ {
+  "flow": "carrito",
+  "step": "botón del carrito alcanzable (volviendo con Shift+Tab)",
+  "ok": true,
+  "label": "Carrito, 1 producto",
+  "presses": 20
+ },
+ {
+  "flow": "compra",
+  "step": "«Continuar con la entrega» alcanzable",
+  "ok": true,
+  "presses": 5
+ },
+ {
+  "flow": "compra",
+  "step": "foco al entrar al paso de entrega",
+  "ok": true,
+  "foco": "Datos de entrega",
+  "tag": "h2"
+ },
+ {
+  "flow": "compra",
+  "step": "orden de los campos",
+  "ok": true,
+  "order": [
+   "idType",
+   "idNumber",
+   "fullName",
+   "phone",
+   "email",
+   "province",
+   "city",
+   "address",
+   "reference",
+   "shippingMethod",
+   "shippingMethod",
+   "paymentMethod",
+   "paymentMethod",
+   "notes"
+  ]
+ },
+ {
+  "flow": "compra",
+  "step": "campos completados solo con teclado",
+  "ok": true,
+  "st": {
+   "idType": true,
+   "idNumber": true,
+   "fullName": true,
+   "phone": true,
+   "email": true,
+   "province": true,
+   "city": true,
+   "address": true
+  },
+  "values": {
+   "idType": "CEDULA",
+   "idNumber": "1710034065",
+   "fullName": "Prueba Teclado",
+   "phone": "0991234567",
+   "email": "prueba.teclado@gmail.com",
+   "province": "Pichincha",
+   "city": "Quito",
+   "address": "Av. Amazonas N24-100 y Colón",
+   "reference": ""
+  }
+ },
+ {
+  "flow": "compra",
+  "step": "envío elegible con flechas",
+  "ok": true,
+  "estado": [
+   "●",
+   "○"
+  ]
+ },
+ {
+  "flow": "compra",
+  "step": "forma de pago alcanzable",
+  "ok": true,
+  "etiqueta": "Transferencia bancariaTe damos los datos de la cue"
+ },
+ {
+  "flow": "compra",
+  "step": "botón de confirmación alcanzable",
+  "ok": true,
+  "label": "Confirmar pedido · $63,90",
+  "presses": 6
+ },
+ {
+  "flow": "compra",
+  "step": "pedido registrado solo con teclado",
+  "ok": true,
+  "errores": [],
+  "invalidos": [],
+  "foco": "Pedido recibido",
+  "texto": "Pedido recibido1Carrito2Entrega3WhatsAppPedido RE-260929-I261FPedido registrado. Continúa por WhatsApp para recibir los datos de pago. Continuar mi compra por WhatsAppEl mensaje ya incluye tu pedido, "
+ },
+ {
+  "flow": "catálogo móvil",
+  "step": "abrir filtros: estado y foco",
+  "ok": true,
+  "expanded": "true",
+  "foco": "H2 Filtros",
+  "modal": "true"
+ },
+ {
+  "flow": "catálogo móvil",
+  "step": "Tab permanece en el panel de filtros",
+  "ok": true,
+  "salidas": 0
+ },
+ {
+  "flow": "catálogo móvil",
+  "step": "Escape cierra y devuelve el foco al botón",
+  "ok": true,
+  "expanded": "false",
+  "foco": "btn btn-outline filters-open"
+ }
+]

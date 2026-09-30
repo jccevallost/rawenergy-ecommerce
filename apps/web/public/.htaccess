@@ -1,0 +1,24 @@
+# Tienda RawEnergy en Apache o cPanel.
+# Las rutas /catalogo, /producto/<slug> y /campana/<slug> las resuelve la
+# aplicación: los archivos que existen se sirven tal cual y el resto recibe
+# index.html. Otros servidores: docs/despliegue-web.md.
+Options -MultiViews
+RewriteEngine On
+RewriteBase /
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+RewriteRule ^ index.html [L]
+
+<IfModule mod_headers.c>
+  # index.html siempre se revalida: así cada publicación llega a todos.
+  <FilesMatch "^index\.html$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+  # Los JS y CSS del build llevan una huella en el nombre y no cambian nunca.
+  <If "%{REQUEST_URI} =~ m#^/assets/[^/]+-[A-Za-z0-9_-]{8}\.(js|css)$#">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </If>
+  Header set X-Content-Type-Options "nosniff"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

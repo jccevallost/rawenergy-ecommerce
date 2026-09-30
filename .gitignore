@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.turbo/
+.env
+.env.local
+coverage/
+*.log
+apps/*/.vite/
+.DS_Store
+*.zip
+
+
+# Fotos y datos exportados desde la demo local (C37)
+exports/
+
+# Historial del proyecto anterior (POS), conservado solo en este equipo
+.git-pos-anterior/
+# Configuración local del editor
+.vscode/

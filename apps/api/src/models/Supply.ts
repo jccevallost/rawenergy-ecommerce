@@ -1,0 +1,10 @@
+import mongoose from "mongoose";
+const { Schema } = mongoose;
+const supplier = new Schema({ _id: String, accessRevision: { type: Number, default: 0 }, name: { type: String, required: true }, contact: String, email: String, phone: String, address: String, leadDays: { type: Number, default: 7 }, active: { type: Boolean, default: true } }, { timestamps: true });
+const warehouse = new Schema({ _id: String, accessRevision: { type: Number, default: 0 }, name: { type: String, required: true }, address: String, active: { type: Boolean, default: true } }, { timestamps: true });
+const purchase = new Schema({ _id: String, number: String, supplierId: { type: String, index: true }, warehouseId: String, expectedOn: String, status: { type: String, enum: ["DRAFT", "ORDERED", "RECEIVED", "CANCELLED"], default: "DRAFT" }, notes: String, items: [{ productId: String, sku: String, title: String, quantity: Number, unitCost: Number, lot: String, expiresOn: String, _id: false }], total: Number, receivedAt: Date, revision: { type: Number, default: 0 } }, { timestamps: true });
+const movement = new Schema({ _id: String, sequence: Number, productId: { type: String, index: true }, sku: { type: String, index: true }, title: String, delta: Number, before: Number, after: Number, warehouseId: String, lot: String, expiresOn: String, unitCost: Number, reason: String, actorId: String, requestId: { type: String, index: true }, createdAt: { type: Date, default: Date.now, index: true } });
+export const SupplierModel = (mongoose.models.Supplier ?? mongoose.model("Supplier", supplier)) as mongoose.Model<mongoose.InferSchemaType<typeof supplier>>;
+export const WarehouseModel = (mongoose.models.Warehouse ?? mongoose.model("Warehouse", warehouse)) as mongoose.Model<mongoose.InferSchemaType<typeof warehouse>>;
+export const PurchaseModel = (mongoose.models.Purchase ?? mongoose.model("Purchase", purchase)) as mongoose.Model<mongoose.InferSchemaType<typeof purchase>>;
+export const MovementModel = (mongoose.models.StockMovement ?? mongoose.model("StockMovement", movement)) as mongoose.Model<mongoose.InferSchemaType<typeof movement>>;

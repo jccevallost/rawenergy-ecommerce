@@ -1,0 +1,37 @@
+{
+  "name": "@vital-forge/api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "db:test": "tsx src/scripts/testMongoConnection.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "telegram:chat": "tsx src/scripts/telegramChatId.ts"
+  },
+  "dependencies": {
+    "@apollo/server": "^5.0.0",
+    "@as-integrations/express5": "^1.1.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
+    "graphql": "^16.11.0",
+    "graphql-depth-limit": "^1.1.0",
+    "mongoose": "^8.15.1",
+    "nodemailer": "^10.0.1",
+    "sharp": "^0.35.4",
+    "zod": "^3.25.51"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.18",
+    "@types/express": "^5.0.2",
+    "@types/graphql-depth-limit": "^1.1.6",
+    "@types/nodemailer": "^8.0.1",
+    "tsx": "^4.19.4",
+    "vitest": "^3.2.4"
+  }
+}

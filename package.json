@@ -1,0 +1,25 @@
+{
+  "name": "rawenergy-ec-commerce",
+  "version": "1.0.0",
+  "packageManager": "npm@11.6.1",
+  "private": true,
+  "description": "Monorepo de e-commerce de suplementación deportiva listo para web y React Native",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "turbo dev",
+    "dev:api": "npm run dev -w @vital-forge/api",
+    "dev:web": "npm run dev -w @vital-forge/web",
+    "dev:admin": "npm run dev -w @vital-forge/admin",
+    "demo": "node scripts/demo-local.mjs",
+    "fotos:capturar": "node scripts/capture-media.mjs",
+    "fotos:sincronizar": "node --import tsx scripts/sync-media.mts",
+    "build": "turbo build",
+    "test": "turbo test",
+    "typecheck": "turbo typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.3"
+  },
+  "engines": { "node": ">=20" }
+}

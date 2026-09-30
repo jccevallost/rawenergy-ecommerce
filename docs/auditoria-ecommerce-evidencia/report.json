@@ -1,0 +1,224 @@
+{
+  "ok": true,
+  "checks": [
+    "Umbral de envío desde servidor: 95 USD",
+    "Carrusel: avance 8s, pausa por foco y siguiente tarjeta parcial",
+    "Movimiento reducido inicia pausado",
+    "Teclado: detalles alcanzables, Tab contenido, Escape y restauración de foco",
+    "Galería y zoom; agotado bloqueado; invitado confirma variante elegida, un pedido y total 29 USD",
+    "Búsqueda vacía recuperable y orden global",
+    "Precio inválido explicado y filtro 80–90 USD correcto",
+    "Móvil 390/320 sin desbordamiento, filtros plegables"
+  ],
+  "catalogReadyMs": 165,
+  "metrics": {
+    "lcp": 116,
+    "navigation": {
+      "name": "http://127.0.0.1:14852/",
+      "entryType": "navigation",
+      "startTime": 0,
+      "duration": 46.10000000009313,
+      "navigationId": 4709,
+      "initiatorType": "navigation",
+      "deliveryType": "",
+      "nextHopProtocol": "http/1.1",
+      "renderBlockingStatus": "non-blocking",
+      "contentType": "text/html",
+      "contentEncoding": "",
+      "workerStart": 0,
+      "workerRouterEvaluationStart": 0,
+      "workerCacheLookupStart": 0,
+      "workerMatchedSourceType": "",
+      "workerFinalSourceType": "",
+      "redirectStart": 0,
+      "redirectEnd": 0,
+      "fetchStart": 0.39999999990686774,
+      "domainLookupStart": 0.39999999990686774,
+      "domainLookupEnd": 0.39999999990686774,
+      "connectStart": 0.39999999990686774,
+      "secureConnectionStart": 0,
+      "connectEnd": 0.39999999990686774,
+      "requestStart": 0.8999999999068677,
+      "responseStart": 1.7000000001862645,
+      "firstInterimResponseStart": 0,
+      "finalResponseHeadersStart": 1.7000000001862645,
+      "responseEnd": 1.8999999999068677,
+      "transferSize": 885,
+      "encodedBodySize": 585,
+      "decodedBodySize": 585,
+      "responseStatus": 200,
+      "serverTiming": [],
+      "unloadEventStart": 0,
+      "unloadEventEnd": 0,
+      "domInteractive": 5.5,
+      "domContentLoadedEventStart": 46.10000000009313,
+      "domContentLoadedEventEnd": 46.10000000009313,
+      "domComplete": 46.10000000009313,
+      "loadEventStart": 46.10000000009313,
+      "loadEventEnd": 46.10000000009313,
+      "type": "navigate",
+      "redirectCount": 0,
+      "activationStart": 0,
+      "criticalCHRestart": 0,
+      "notRestoredReasons": null,
+      "confidence": {}
+    },
+    "resources": [
+      {
+        "name": "http://127.0.0.1:14852/assets/index-CgRuFXz9.js",
+        "duration": 25.700000000186265,
+        "bytes": 142583
+      },
+      {
+        "name": "http://127.0.0.1:14852/assets/index-DtOsDx3u.css",
+        "duration": 7.2999999998137355,
+        "bytes": 13161
+      },
+      {
+        "name": "http://127.0.0.1:14852/assets/store/logo.png",
+        "duration": 2,
+        "bytes": 125215
+      },
+      {
+        "name": "http://127.0.0.1:14851/graphql",
+        "duration": 9,
+        "bytes": 0
+      },
+      {
+        "name": "http://127.0.0.1:14851/graphql",
+        "duration": 21.399999999906868,
+        "bytes": 0
+      },
+      {
+        "name": "http://127.0.0.1:14851/graphql",
+        "duration": 12.799999999813735,
+        "bytes": 0
+      },
+      {
+        "name": "http://127.0.0.1:14851/graphql",
+        "duration": 26,
+        "bytes": 0
+      },
+      {
+        "name": "http://127.0.0.1:14851/graphql",
+        "duration": 28.5,
+        "bytes": 0
+      },
+      {
+        "name": "http://127.0.0.1:14852/favicon.ico",
+        "duration": 1.6000000000931323,
+        "bytes": 300
+      },
+      {
+        "name": "https://images.unsplash.com/photo-1593095948071-474c5cc2989d?auto=format&fit=crop&w=900&q=80",
+        "duration": 0,
+        "bytes": 0
+      },
+      {
+        "name": "https://images.unsplash.com/photo-1579722821273-0f6c7d44362f?auto=format&fit=crop&w=900&q=80",
+        "duration": 0,
+        "bytes": 0
+      },
+      {
+        "name": "https://images.unsplash.com/photo-1775200279682-cf9af4cb2e4e?auto=format&fit=crop&w=900&q=80",
+        "duration": 0,
+        "bytes": 0
+      },
+      {
+        "name": "https://images.unsplash.com/photo-1774935989989-922da81ad1bc?auto=format&fit=crop&w=900&q=80",
+        "duration": 0,
+        "bytes": 0
+      },
+      {
+        "name": "https://images.unsplash.com/photo-1593095948071-474c5cc2989d?auto=format&fit=crop&w=900&q=80",
+        "duration": 0,
+        "bytes": 0
+      },
+      {
+        "name": "https://images.unsplash.com/photo-1579722821273-0f6c7d44362f?auto=format&fit=crop&w=900&q=80",
+        "duration": 0,
+        "bytes": 0
+      },
+      {
+        "name": "https://images.unsplash.com/photo-1775200279682-cf9af4cb2e4e?auto=format&fit=crop&w=900&q=80",
+        "duration": 0,
+        "bytes": 0
+      },
+      {
+        "name": "https://images.unsplash.com/photo-1774935989989-922da81ad1bc?auto=format&fit=crop&w=900&q=80",
+        "duration": 0,
+        "bytes": 0
+      },
+      {
+        "name": "http://127.0.0.1:14852/assets/brands/raw-nutrition.png",
+        "duration": 2.1000000000931323,
+        "bytes": 86122
+      },
+      {
+        "name": "https://images.unsplash.com/photo-1593095948071-474c5cc2989d?auto=format&fit=crop&w=900&q=80",
+        "duration": 0,
+        "bytes": 0
+      },
+      {
+        "name": "https://images.unsplash.com/photo-1579722821273-0f6c7d44362f?auto=format&fit=crop&w=900&q=80",
+        "duration": 0,
+        "bytes": 0
+      },
+      {
+        "name": "https://images.unsplash.com/photo-1594882645126-14020914d58d?auto=format&fit=crop&w=900&q=80",
+        "duration": 0,
+        "bytes": 0
+      },
+      {
+        "name": "https://images.unsplash.com/photo-1775200279682-cf9af4cb2e4e?auto=format&fit=crop&w=900&q=80",
+        "duration": 0,
+        "bytes": 0
+      },
+      {
+        "name": "https://images.unsplash.com/photo-1615485737651-580c9159c89a?auto=format&fit=crop&w=900&q=80",
+        "duration": 0,
+        "bytes": 0
+      },
+      {
+        "name": "https://images.unsplash.com/photo-1774935989989-922da81ad1bc?auto=format&fit=crop&w=900&q=80",
+        "duration": 0,
+        "bytes": 0
+      },
+      {
+        "name": "https://images.unsplash.com/photo-1593095948071-474c5cc2989d?auto=format&fit=crop&w=900&q=80",
+        "duration": 0,
+        "bytes": 0
+      },
+      {
+        "name": "https://images.unsplash.com/photo-1579722821273-0f6c7d44362f?auto=format&fit=crop&w=900&q=80",
+        "duration": 0,
+        "bytes": 0
+      },
+      {
+        "name": "https://images.unsplash.com/photo-1594882645126-14020914d58d?auto=format&fit=crop&w=900&q=80",
+        "duration": 0,
+        "bytes": 0
+      },
+      {
+        "name": "https://images.unsplash.com/photo-1775200279682-cf9af4cb2e4e?auto=format&fit=crop&w=900&q=80",
+        "duration": 0,
+        "bytes": 0
+      },
+      {
+        "name": "https://images.unsplash.com/photo-1615485737651-580c9159c89a?auto=format&fit=crop&w=900&q=80",
+        "duration": 0,
+        "bytes": 0
+      },
+      {
+        "name": "https://images.unsplash.com/photo-1774935989989-922da81ad1bc?auto=format&fit=crop&w=900&q=80",
+        "duration": 0,
+        "bytes": 0
+      }
+    ]
+  },
+  "caveats": [
+    "API demo local, build producción, caché fría inicial, sin throttling",
+    "Fotos externas bloqueadas; no mide carga de fotos reales ni p75 producción",
+    "Datos y pedidos de prueba solo en memoria"
+  ]
+}
