@@ -1,0 +1,1533 @@
+{
+ "tienda 320 iPhone SE 1 · inicio": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 27,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 320 iPhone SE 1 · catalogo": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [
+   "span «Ordenar por»"
+  ],
+  "smallInputs": [],
+  "coveredPct": 27,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 320 iPhone SE 1 · producto": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 27,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 320 iPhone SE 1 · pedido": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 27,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 320 iPhone SE 1 · legal": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 27,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 320 iPhone SE 1 · carrito": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "aside.cart-drawer.is-open 568px"
+  ],
+  "under24": []
+ },
+ "tienda 320 iPhone SE 1 · entrega": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "aside.cart-drawer.is-open 568px"
+  ],
+  "under24": []
+ },
+ "tienda 320 iPhone SE 1 · filtros": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [
+   "span «Ordenar por»"
+  ],
+  "smallInputs": [],
+  "coveredPct": 127,
+  "bars": [
+   "header.site-header 152px",
+   "aside#filtros.filters.is-open 568px"
+  ],
+  "under24": []
+ },
+ "tienda 320 iPhone SE 1 · menú": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.mobile-menu-layer.is-open 568px"
+  ],
+  "under24": []
+ },
+ "tienda 320 iPhone SE 1 · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.modal-backdrop.auth-backdrop 568px"
+  ],
+  "under24": []
+ },
+ "tienda 360 Android · inicio": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 21,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 360 Android · catalogo": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [
+   "span «Ordenar por»"
+  ],
+  "smallInputs": [],
+  "coveredPct": 21,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 360 Android · producto": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 21,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 360 Android · pedido": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 21,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 360 Android · legal": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 21,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 360 Android · carrito": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "aside.cart-drawer.is-open 740px"
+  ],
+  "under24": []
+ },
+ "tienda 360 Android · entrega": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "aside.cart-drawer.is-open 740px"
+  ],
+  "under24": []
+ },
+ "tienda 360 Android · filtros": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [
+   "span «Ordenar por»"
+  ],
+  "smallInputs": [],
+  "coveredPct": 121,
+  "bars": [
+   "header.site-header 152px",
+   "aside#filtros.filters.is-open 740px"
+  ],
+  "under24": []
+ },
+ "tienda 360 Android · menú": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.mobile-menu-layer.is-open 740px"
+  ],
+  "under24": []
+ },
+ "tienda 360 Android · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.modal-backdrop.auth-backdrop 740px"
+  ],
+  "under24": []
+ },
+ "tienda 375 iPhone 8 · inicio": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 23,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 375 iPhone 8 · catalogo": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [
+   "span «Ordenar por»"
+  ],
+  "smallInputs": [],
+  "coveredPct": 23,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 375 iPhone 8 · producto": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 23,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 375 iPhone 8 · pedido": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 23,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 375 iPhone 8 · legal": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 23,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 375 iPhone 8 · carrito": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "aside.cart-drawer.is-open 667px"
+  ],
+  "under24": []
+ },
+ "tienda 375 iPhone 8 · entrega": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "aside.cart-drawer.is-open 667px"
+  ],
+  "under24": []
+ },
+ "tienda 375 iPhone 8 · filtros": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [
+   "span «Ordenar por»"
+  ],
+  "smallInputs": [],
+  "coveredPct": 123,
+  "bars": [
+   "header.site-header 152px",
+   "aside#filtros.filters.is-open 667px"
+  ],
+  "under24": []
+ },
+ "tienda 375 iPhone 8 · menú": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.mobile-menu-layer.is-open 667px"
+  ],
+  "under24": []
+ },
+ "tienda 375 iPhone 8 · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.modal-backdrop.auth-backdrop 667px"
+  ],
+  "under24": []
+ },
+ "tienda 390 iPhone 14 · inicio": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 18,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": [],
+  "axe": []
+ },
+ "tienda 390 iPhone 14 · catalogo": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [
+   "span «Ordenar por»"
+  ],
+  "smallInputs": [],
+  "coveredPct": 18,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": [],
+  "axe": []
+ },
+ "tienda 390 iPhone 14 · producto": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 18,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": [],
+  "axe": []
+ },
+ "tienda 390 iPhone 14 · pedido": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 18,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": [],
+  "axe": []
+ },
+ "tienda 390 iPhone 14 · legal": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 18,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": [],
+  "axe": []
+ },
+ "tienda 390 iPhone 14 · carrito": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "aside.cart-drawer.is-open 844px"
+  ],
+  "under24": []
+ },
+ "tienda 390 iPhone 14 · entrega": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "aside.cart-drawer.is-open 844px"
+  ],
+  "under24": []
+ },
+ "tienda 390 iPhone 14 · filtros": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [
+   "span «Ordenar por»"
+  ],
+  "smallInputs": [],
+  "coveredPct": 118,
+  "bars": [
+   "header.site-header 152px",
+   "aside#filtros.filters.is-open 844px"
+  ],
+  "under24": []
+ },
+ "tienda 390 iPhone 14 · menú": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.mobile-menu-layer.is-open 844px"
+  ],
+  "under24": []
+ },
+ "tienda 390 iPhone 14 · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.modal-backdrop.auth-backdrop 844px"
+  ],
+  "under24": []
+ },
+ "tienda 430 iPhone Pro Max · inicio": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 16,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 430 iPhone Pro Max · catalogo": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [
+   "span «Ordenar por»"
+  ],
+  "smallInputs": [],
+  "coveredPct": 16,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 430 iPhone Pro Max · producto": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 16,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 430 iPhone Pro Max · pedido": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 16,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 430 iPhone Pro Max · legal": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 16,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 430 iPhone Pro Max · carrito": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "aside.cart-drawer.is-open 932px"
+  ],
+  "under24": []
+ },
+ "tienda 430 iPhone Pro Max · entrega": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "aside.cart-drawer.is-open 932px"
+  ],
+  "under24": []
+ },
+ "tienda 430 iPhone Pro Max · filtros": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [
+   "span «Ordenar por»"
+  ],
+  "smallInputs": [],
+  "coveredPct": 116,
+  "bars": [
+   "header.site-header 152px",
+   "aside#filtros.filters.is-open 932px"
+  ],
+  "under24": []
+ },
+ "tienda 430 iPhone Pro Max · menú": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.mobile-menu-layer.is-open 932px"
+  ],
+  "under24": []
+ },
+ "tienda 430 iPhone Pro Max · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.modal-backdrop.auth-backdrop 932px"
+  ],
+  "under24": []
+ },
+ "tienda 568×320 horizontal · inicio": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": [],
+  "axe": []
+ },
+ "tienda 568×320 horizontal · catalogo": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [
+   "span «Ordenar por»"
+  ],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": [],
+  "axe": []
+ },
+ "tienda 568×320 horizontal · producto": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": [],
+  "axe": []
+ },
+ "tienda 568×320 horizontal · pedido": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": [],
+  "axe": []
+ },
+ "tienda 568×320 horizontal · legal": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": [],
+  "axe": []
+ },
+ "tienda 568×320 horizontal · carrito": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "aside.cart-drawer.is-open 320px"
+  ],
+  "under24": []
+ },
+ "tienda 568×320 horizontal · entrega": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "aside.cart-drawer.is-open 320px"
+  ],
+  "under24": []
+ },
+ "tienda 568×320 horizontal · filtros": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [
+   "span «Ordenar por»"
+  ],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "aside#filtros.filters.is-open 320px"
+  ],
+  "under24": []
+ },
+ "tienda 568×320 horizontal · menú": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.mobile-menu-layer.is-open 320px"
+  ],
+  "under24": []
+ },
+ "tienda 568×320 horizontal · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.modal-backdrop.auth-backdrop 320px"
+  ],
+  "under24": []
+ },
+ "tienda 844×390 horizontal · inicio": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "tienda 844×390 horizontal · catalogo": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [
+   "span «Ordenar por»"
+  ],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "tienda 844×390 horizontal · producto": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "tienda 844×390 horizontal · pedido": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "tienda 844×390 horizontal · legal": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "tienda 844×390 horizontal · carrito": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "tienda 844×390 horizontal · entrega": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "tienda 844×390 horizontal · filtros": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [
+   "span «Ordenar por»"
+  ],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "aside#filtros.filters.is-open 390px"
+  ],
+  "under24": []
+ },
+ "tienda 844×390 horizontal · menú": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.mobile-menu-layer.is-open 390px"
+  ],
+  "under24": []
+ },
+ "tienda 844×390 horizontal · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.modal-backdrop.auth-backdrop 390px"
+  ],
+  "under24": []
+ },
+ "tienda 768 iPad vertical · inicio": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 15,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 768 iPad vertical · catalogo": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [
+   "span «Ordenar por»"
+  ],
+  "smallInputs": [],
+  "coveredPct": 15,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 768 iPad vertical · producto": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 15,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 768 iPad vertical · pedido": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 15,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 768 iPad vertical · legal": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 15,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 768 iPad vertical · carrito": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "tienda 768 iPad vertical · entrega": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "tienda 768 iPad vertical · filtros": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [
+   "span «Ordenar por»"
+  ],
+  "smallInputs": [],
+  "coveredPct": 115,
+  "bars": [
+   "header.site-header 152px",
+   "aside#filtros.filters.is-open 1024px"
+  ],
+  "under24": []
+ },
+ "tienda 768 iPad vertical · menú": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.mobile-menu-layer.is-open 1024px"
+  ],
+  "under24": []
+ },
+ "tienda 768 iPad vertical · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.modal-backdrop.auth-backdrop 1024px"
+  ],
+  "under24": []
+ },
+ "tienda 820 iPad Air vertical · inicio": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 13,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 820 iPad Air vertical · catalogo": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [
+   "span «Ordenar por»"
+  ],
+  "smallInputs": [],
+  "coveredPct": 13,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 820 iPad Air vertical · producto": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 13,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 820 iPad Air vertical · pedido": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 13,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 820 iPad Air vertical · legal": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 13,
+  "bars": [
+   "header.site-header 152px"
+  ],
+  "under24": []
+ },
+ "tienda 820 iPad Air vertical · carrito": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "tienda 820 iPad Air vertical · entrega": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "tienda 820 iPad Air vertical · filtros": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [
+   "span «Ordenar por»"
+  ],
+  "smallInputs": [],
+  "coveredPct": 113,
+  "bars": [
+   "header.site-header 152px",
+   "aside#filtros.filters.is-open 1180px"
+  ],
+  "under24": []
+ },
+ "tienda 820 iPad Air vertical · menú": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.mobile-menu-layer.is-open 1180px"
+  ],
+  "under24": []
+ },
+ "tienda 820 iPad Air vertical · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.modal-backdrop.auth-backdrop 1180px"
+  ],
+  "under24": []
+ },
+ "tienda 1024 iPad horizontal · inicio": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 19,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": [],
+  "axe": []
+ },
+ "tienda 1024 iPad horizontal · catalogo": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 19,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": [],
+  "axe": []
+ },
+ "tienda 1024 iPad horizontal · producto": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 19,
+  "bars": [
+   "header.site-header 149px",
+   "header.site-header 117px"
+  ],
+  "under24": [],
+  "axe": []
+ },
+ "tienda 1024 iPad horizontal · pedido": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 19,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": [],
+  "axe": []
+ },
+ "tienda 1024 iPad horizontal · legal": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 19,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": [],
+  "axe": []
+ },
+ "tienda 1024 iPad horizontal · carrito": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "tienda 1024 iPad horizontal · entrega": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "tienda 1024 iPad horizontal · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.modal-backdrop.auth-backdrop 768px"
+  ],
+  "under24": []
+ },
+ "tienda 1180 iPad Air horizontal · inicio": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 18,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": []
+ },
+ "tienda 1180 iPad Air horizontal · catalogo": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 18,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": []
+ },
+ "tienda 1180 iPad Air horizontal · producto": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 18,
+  "bars": [
+   "header.site-header 149px",
+   "header.site-header 117px"
+  ],
+  "under24": []
+ },
+ "tienda 1180 iPad Air horizontal · pedido": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 18,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": []
+ },
+ "tienda 1180 iPad Air horizontal · legal": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 18,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": []
+ },
+ "tienda 1180 iPad Air horizontal · carrito": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "tienda 1180 iPad Air horizontal · entrega": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "tienda 1180 iPad Air horizontal · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.modal-backdrop.auth-backdrop 820px"
+  ],
+  "under24": []
+ },
+ "tienda 1280 portátil · inicio": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 19,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": []
+ },
+ "tienda 1280 portátil · catalogo": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 19,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": []
+ },
+ "tienda 1280 portátil · producto": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 19,
+  "bars": [
+   "header.site-header 149px",
+   "header.site-header 117px"
+  ],
+  "under24": []
+ },
+ "tienda 1280 portátil · pedido": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 19,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": []
+ },
+ "tienda 1280 portátil · legal": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 19,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": []
+ },
+ "tienda 1280 portátil · carrito": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "tienda 1280 portátil · entrega": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "tienda 1280 portátil · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.modal-backdrop.auth-backdrop 800px"
+  ],
+  "under24": []
+ },
+ "tienda 1440 escritorio · inicio": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 17,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": [],
+  "axe": []
+ },
+ "tienda 1440 escritorio · catalogo": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 17,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": [],
+  "axe": []
+ },
+ "tienda 1440 escritorio · producto": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 17,
+  "bars": [
+   "header.site-header 149px",
+   "header.site-header 117px"
+  ],
+  "under24": [],
+  "axe": []
+ },
+ "tienda 1440 escritorio · pedido": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 17,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": [],
+  "axe": []
+ },
+ "tienda 1440 escritorio · legal": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 17,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": [],
+  "axe": []
+ },
+ "tienda 1440 escritorio · carrito": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "tienda 1440 escritorio · entrega": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "tienda 1440 escritorio · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.modal-backdrop.auth-backdrop 900px"
+  ],
+  "under24": []
+ },
+ "tienda 1920 Full HD · inicio": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 14,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": []
+ },
+ "tienda 1920 Full HD · catalogo": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 14,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": []
+ },
+ "tienda 1920 Full HD · producto": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 14,
+  "bars": [
+   "header.site-header 149px",
+   "header.site-header 117px"
+  ],
+  "under24": []
+ },
+ "tienda 1920 Full HD · pedido": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 14,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": []
+ },
+ "tienda 1920 Full HD · legal": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 14,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": []
+ },
+ "tienda 1920 Full HD · carrito": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "tienda 1920 Full HD · entrega": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "tienda 1920 Full HD · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.modal-backdrop.auth-backdrop 1080px"
+  ],
+  "under24": []
+ },
+ "tienda 2560 QHD · inicio": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 10,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": []
+ },
+ "tienda 2560 QHD · catalogo": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 10,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": []
+ },
+ "tienda 2560 QHD · producto": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 10,
+  "bars": [
+   "header.site-header 149px",
+   "header.site-header 117px"
+  ],
+  "under24": []
+ },
+ "tienda 2560 QHD · pedido": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 10,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": []
+ },
+ "tienda 2560 QHD · legal": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 10,
+  "bars": [
+   "header.site-header 149px"
+  ],
+  "under24": []
+ },
+ "tienda 2560 QHD · carrito": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "tienda 2560 QHD · entrega": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "tienda 2560 QHD · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 100,
+  "bars": [
+   "div.modal-backdrop.auth-backdrop 1440px"
+  ],
+  "under24": []
+ }
+}

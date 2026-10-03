@@ -55,3 +55,8 @@
 input::placeholder,textarea::placeholder{color:#6b7468;opacity:1;font-weight:400;font-style:italic}
 /* Filas archivadas o bloqueadas: se atenúa la miniatura, no el texto (que debe seguir legible). */
 .admin-page h1[tabindex="-1"]:focus,.admin-page [data-view-title][tabindex="-1"]:focus{outline:none}
+/* Pantallas táctiles y bajas (C54). iOS amplía la página al tocar un campo de menos de 16 px. */
+@media (pointer:coarse){input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),select,textarea{font-size:16px!important}}
+.tags>span button{min-width:28px;place-items:center}
+/* Móvil en horizontal: la barra superior se desplaza con la página para no tapar el contenido. */
+@media(max-height:500px){.topbar{position:relative;top:auto}.floating-actions{padding-block:8px}}

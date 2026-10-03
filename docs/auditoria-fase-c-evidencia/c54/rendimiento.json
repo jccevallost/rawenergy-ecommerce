@@ -1,0 +1,68 @@
+[
+ {
+  "perfil": "móvil 360×740, 4G lenta, CPU 4×",
+  "pagina": "inicio",
+  "fcp": 1340,
+  "lcp": 3080,
+  "cls": 0.005,
+  "tbt": 18,
+  "load": 1220,
+  "kb": 545,
+  "corridas": 3
+ },
+ {
+  "perfil": "móvil 360×740, 4G lenta, CPU 4×",
+  "pagina": "catalogo",
+  "fcp": 1304,
+  "lcp": 2568,
+  "cls": 0.001,
+  "tbt": 12,
+  "load": 1220,
+  "kb": 736,
+  "corridas": 3
+ },
+ {
+  "perfil": "móvil 360×740, 4G lenta, CPU 4×",
+  "pagina": "producto",
+  "fcp": 1304,
+  "lcp": 2356,
+  "cls": 0,
+  "tbt": 11,
+  "load": 1219,
+  "kb": 477,
+  "corridas": 3
+ },
+ {
+  "perfil": "escritorio 1440×900, sin limitar",
+  "pagina": "inicio",
+  "fcp": 80,
+  "lcp": 128,
+  "cls": 0.019,
+  "tbt": 0,
+  "load": 36,
+  "kb": 841,
+  "corridas": 3
+ },
+ {
+  "perfil": "escritorio 1440×900, sin limitar",
+  "pagina": "catalogo",
+  "fcp": 64,
+  "lcp": 440,
+  "cls": 0.011,
+  "tbt": 0,
+  "load": 35,
+  "kb": 736,
+  "corridas": 3
+ },
+ {
+  "perfil": "escritorio 1440×900, sin limitar",
+  "pagina": "producto",
+  "fcp": 64,
+  "lcp": 408,
+  "cls": 0.003,
+  "tbt": 0,
+  "load": 36,
+  "kb": 492,
+  "corridas": 3
+ }
+]

@@ -1,0 +1,310 @@
+[
+ {
+  "flow": "iPhone SE 320×568",
+  "step": "inicio: sin desborde ni zoom automático",
+  "ok": true,
+  "scrollX": 0,
+  "fuera": [],
+  "zoomIOS": []
+ },
+ {
+  "flow": "iPhone SE 320×568",
+  "step": "catálogo: sin desborde ni zoom automático",
+  "ok": true,
+  "scrollX": 0,
+  "fuera": [],
+  "zoomIOS": []
+ },
+ {
+  "flow": "iPhone SE 320×568",
+  "step": "ficha: sin desborde ni zoom automático",
+  "ok": true,
+  "scrollX": 0,
+  "fuera": [],
+  "zoomIOS": []
+ },
+ {
+  "flow": "iPhone SE 320×568",
+  "step": "pedido: sin desborde ni zoom automático",
+  "ok": true,
+  "scrollX": 0,
+  "fuera": [],
+  "zoomIOS": []
+ },
+ {
+  "flow": "iPhone SE 320×568",
+  "step": "galería cuadrada",
+  "ok": true,
+  "w": 296,
+  "h": 296
+ },
+ {
+  "flow": "iPhone SE 320×568",
+  "step": "salto más allá del bloque de compra: cabecera fuera y barra visible",
+  "ok": true,
+  "cabeceraOculta": true,
+  "barra": true
+ },
+ {
+  "flow": "iPhone SE 320×568",
+  "step": "al subir: cabecera de vuelta",
+  "ok": true,
+  "visible": true,
+  "nota": ""
+ },
+ {
+  "flow": "iPhone SE 320×568",
+  "step": "el menú se abre y cabe en pantalla",
+  "ok": true,
+  "w": 320,
+  "h": 568,
+  "foco": "Menú"
+ },
+ {
+  "flow": "iPhone SE 320×568",
+  "step": "acceso: diálogo dentro de la pantalla y campos de 16 px",
+  "ok": true,
+  "top": 12,
+  "bottom": 543,
+  "alto": 568,
+  "emailPx": "16px"
+ },
+ {
+  "flow": "iPhone SE 320×568",
+  "step": "compra completa (campos de entrega sin zoom de iOS)",
+  "ok": true,
+  "pedido": "Pedido RE-261003-LBAZZ",
+  "zoomIOS": []
+ },
+ {
+  "flow": "iPhone 14 390×664",
+  "step": "inicio: sin desborde ni zoom automático",
+  "ok": true,
+  "scrollX": 0,
+  "fuera": [],
+  "zoomIOS": []
+ },
+ {
+  "flow": "iPhone 14 390×664",
+  "step": "catálogo: sin desborde ni zoom automático",
+  "ok": true,
+  "scrollX": 0,
+  "fuera": [],
+  "zoomIOS": []
+ },
+ {
+  "flow": "iPhone 14 390×664",
+  "step": "ficha: sin desborde ni zoom automático",
+  "ok": true,
+  "scrollX": 0,
+  "fuera": [],
+  "zoomIOS": []
+ },
+ {
+  "flow": "iPhone 14 390×664",
+  "step": "pedido: sin desborde ni zoom automático",
+  "ok": true,
+  "scrollX": 0,
+  "fuera": [],
+  "zoomIOS": []
+ },
+ {
+  "flow": "iPhone 14 390×664",
+  "step": "galería cuadrada",
+  "ok": true,
+  "w": 366,
+  "h": 366
+ },
+ {
+  "flow": "iPhone 14 390×664",
+  "step": "salto más allá del bloque de compra: cabecera fuera y barra visible",
+  "ok": true,
+  "cabeceraOculta": true,
+  "barra": true
+ },
+ {
+  "flow": "iPhone 14 390×664",
+  "step": "al subir: cabecera de vuelta",
+  "ok": true,
+  "visible": true,
+  "nota": ""
+ },
+ {
+  "flow": "iPhone 14 390×664",
+  "step": "el menú se abre y cabe en pantalla",
+  "ok": true,
+  "w": 390,
+  "h": 664,
+  "foco": "Menú"
+ },
+ {
+  "flow": "iPhone 14 390×664",
+  "step": "acceso: diálogo dentro de la pantalla y campos de 16 px",
+  "ok": true,
+  "top": 12,
+  "bottom": 543,
+  "alto": 664,
+  "emailPx": "16px"
+ },
+ {
+  "flow": "iPhone 14 390×664",
+  "step": "compra completa (campos de entrega sin zoom de iOS)",
+  "ok": true,
+  "pedido": "Pedido RE-261003-1AD3C",
+  "zoomIOS": []
+ },
+ {
+  "flow": "iPhone 14 horizontal 750×340",
+  "step": "inicio: sin desborde ni zoom automático",
+  "ok": true,
+  "scrollX": 0,
+  "fuera": [],
+  "zoomIOS": []
+ },
+ {
+  "flow": "iPhone 14 horizontal 750×340",
+  "step": "catálogo: sin desborde ni zoom automático",
+  "ok": true,
+  "scrollX": 0,
+  "fuera": [],
+  "zoomIOS": []
+ },
+ {
+  "flow": "iPhone 14 horizontal 750×340",
+  "step": "ficha: sin desborde ni zoom automático",
+  "ok": true,
+  "scrollX": 0,
+  "fuera": [],
+  "zoomIOS": []
+ },
+ {
+  "flow": "iPhone 14 horizontal 750×340",
+  "step": "pedido: sin desborde ni zoom automático",
+  "ok": true,
+  "scrollX": 0,
+  "fuera": [],
+  "zoomIOS": []
+ },
+ {
+  "flow": "iPhone 14 horizontal 750×340",
+  "step": "galería cuadrada",
+  "ok": true,
+  "w": 718,
+  "h": 718
+ },
+ {
+  "flow": "iPhone 14 horizontal 750×340",
+  "step": "salto más allá del bloque de compra: cabecera fuera y barra visible",
+  "ok": true,
+  "cabeceraOculta": true,
+  "barra": true
+ },
+ {
+  "flow": "iPhone 14 horizontal 750×340",
+  "step": "al subir: cabecera de vuelta",
+  "ok": true,
+  "visible": false,
+  "nota": "en horizontal bajo la cabecera no es fija"
+ },
+ {
+  "flow": "iPhone 14 horizontal 750×340",
+  "step": "el menú se abre y cabe en pantalla",
+  "ok": true,
+  "w": 750,
+  "h": 340,
+  "foco": "Menú"
+ },
+ {
+  "flow": "iPhone 14 horizontal 750×340",
+  "step": "acceso: diálogo dentro de la pantalla y campos de 16 px",
+  "ok": true,
+  "top": 16,
+  "bottom": 324,
+  "alto": 340,
+  "emailPx": "16px"
+ },
+ {
+  "flow": "iPhone 14 horizontal 750×340",
+  "step": "compra completa (campos de entrega sin zoom de iOS)",
+  "ok": true,
+  "pedido": "Pedido RE-261003-X1S8F",
+  "zoomIOS": []
+ },
+ {
+  "flow": "iPad Mini 768×1024",
+  "step": "inicio: sin desborde ni zoom automático",
+  "ok": true,
+  "scrollX": 0,
+  "fuera": [],
+  "zoomIOS": []
+ },
+ {
+  "flow": "iPad Mini 768×1024",
+  "step": "catálogo: sin desborde ni zoom automático",
+  "ok": true,
+  "scrollX": 0,
+  "fuera": [],
+  "zoomIOS": []
+ },
+ {
+  "flow": "iPad Mini 768×1024",
+  "step": "ficha: sin desborde ni zoom automático",
+  "ok": true,
+  "scrollX": 0,
+  "fuera": [],
+  "zoomIOS": []
+ },
+ {
+  "flow": "iPad Mini 768×1024",
+  "step": "pedido: sin desborde ni zoom automático",
+  "ok": true,
+  "scrollX": 0,
+  "fuera": [],
+  "zoomIOS": []
+ },
+ {
+  "flow": "iPad Mini 768×1024",
+  "step": "galería cuadrada",
+  "ok": true,
+  "w": 736,
+  "h": 736
+ },
+ {
+  "flow": "iPad Mini 768×1024",
+  "step": "salto más allá del bloque de compra: cabecera fuera y barra visible",
+  "ok": true,
+  "cabeceraOculta": true,
+  "barra": true
+ },
+ {
+  "flow": "iPad Mini 768×1024",
+  "step": "al subir: cabecera de vuelta",
+  "ok": true,
+  "visible": true,
+  "nota": ""
+ },
+ {
+  "flow": "iPad Mini 768×1024",
+  "step": "el menú se abre y cabe en pantalla",
+  "ok": true,
+  "w": 768,
+  "h": 1024,
+  "foco": "Menú"
+ },
+ {
+  "flow": "iPad Mini 768×1024",
+  "step": "acceso: diálogo dentro de la pantalla y campos de 16 px",
+  "ok": true,
+  "top": 237,
+  "bottom": 787,
+  "alto": 1024,
+  "emailPx": "16px"
+ },
+ {
+  "flow": "iPad Mini 768×1024",
+  "step": "compra completa (campos de entrega sin zoom de iOS)",
+  "ok": true,
+  "pedido": "Pedido RE-261003-YA9TS",
+  "zoomIOS": []
+ }
+]

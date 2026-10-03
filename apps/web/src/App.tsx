@@ -127,7 +127,7 @@ export default function App() {
         }}>
         <Header user={user} adminUrl={ADMIN_URL} menuOpen={menuOpen} onMenu={() => setMenuOpen(true)} onLogin={() => setAuthOpen("login")} onOrders={openOrders} onLogout={logout} />
         <main id="contenido" tabIndex={-1} className="page">
-          <Suspense fallback={<p className="container loading-line" role="status">Cargando…</p>}>
+          <Suspense fallback={<p className="container loading-line loading-page" role="status">Cargando…</p>}>
             {route.name === "home" ? <HomePage />
               : route.name === "catalog" ? <CatalogPage search={route.search} />
               : route.name === "product" ? <ProductPage slug={route.slug} />

@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useQuery } from "@apollo/client";
 import { LogOut, Menu, Search, ShoppingBag, UserRound } from "lucide-react";
 import { type AuthUser, CHECKOUT_INFO, type CheckoutInfo, useCartOrchestrator } from "@vital-forge/shared-logic";
@@ -39,6 +39,28 @@ export function Header({ user, adminUrl, menuOpen, onMenu, onLogin, onOrders, on
 
   useEffect(() => setQuery(currentQuery), [currentQuery]);
 
+  // Móvil y tableta (C54): la cabecera se oculta al bajar y vuelve al subir. Nunca se
+  // oculta cerca del inicio ni con el foco dentro (búsqueda, menú, carrito).
+  const headerRef = useRef<HTMLElement>(null);
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    const small = matchMedia("(max-width: 900px)");
+    let last = window.scrollY, frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const y = window.scrollY, delta = y - last;
+        last = y;
+        if (!small.matches || y < 160 || headerRef.current?.contains(document.activeElement)) { setHidden(false); return; }
+        if (delta > 6) setHidden(true);
+        else if (delta < -6) setHidden(false);
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => { window.removeEventListener("scroll", onScroll); cancelAnimationFrame(frame); };
+  }, []);
+  useEffect(() => setHidden(false), [href]);
+
   const search = (event: FormEvent) => {
     event.preventDefault();
     const text = query.trim();
@@ -46,7 +68,7 @@ export function Header({ user, adminUrl, menuOpen, onMenu, onLogin, onOrders, on
   };
 
   return (
-    <header className="site-header">
+    <header className={`site-header ${hidden ? "is-hidden" : ""}`} ref={headerRef} onFocusCapture={() => setHidden(false)}>
       <a className="skip-link" href="#contenido">Saltar al contenido</a>
       <a className="skip-link" href="#buscar">Ir a la búsqueda</a>
       <p className="promo-strip">

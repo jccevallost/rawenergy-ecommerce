@@ -73,6 +73,19 @@ function ProductView({ product }: { product: Product }) {
   const [sku, setSku] = useState(() => (product.variants.find(candidate => candidate.stock > 0) ?? product.variants[0])?.sku ?? "");
   const [quantity, setQuantity] = useState(1);
   const heading = useRef<HTMLHeadingElement>(null);
+  // La barra fija del móvil repite «Agregar al carrito»: aparece solo cuando el bloque de compra
+  // ya quedó atrás (por encima de la pantalla), para no tapar la foto al entrar ni duplicar el botón (C54).
+  // La zona observada se alarga hacia abajo: el aviso llega al cruzar el borde superior, también en saltos
+  // (scroll restaurado, enlaces), y no al entrar o salir por abajo.
+  const purchaseRef = useRef<HTMLDivElement>(null);
+  const [buyBarHidden, setBuyBarHidden] = useState(true);
+  useEffect(() => {
+    const target = purchaseRef.current;
+    if (!target || typeof IntersectionObserver === "undefined") { setBuyBarHidden(false); return; }
+    const observer = new IntersectionObserver(([entry]) => setBuyBarHidden(!entry || entry.isIntersecting), { rootMargin: "0px 0px 100000px 0px" });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, []);
   usePageEntry(product.title, heading);
   useEffect(() => { rememberProduct(product); }, [product]);
   useProductMetadata(product);
@@ -146,7 +159,7 @@ function ProductView({ product }: { product: Product }) {
               options={sizes.map(candidate => ({ value: candidate.sku, label: sizeOf(candidate), soldOut: candidate.stock <= 0 }))} />}
             {flavors.length <= 1 && sizes.length <= 1 && <p className="selected-variant">Presentación: <b>{variantLabel(variant)}</b></p>}
 
-            <div className="purchase">
+            <div className="purchase" ref={purchaseRef}>
               <div className="stepper" role="group" aria-label="Cantidad">
                 <button type="button" onClick={() => setQuantity(value => Math.max(1, value - 1))} disabled={soldOut || quantity <= 1} aria-label="Quitar una unidad"><Minus size={18} /></button>
                 <output aria-live="polite" aria-label={`Cantidad: ${quantity}`}>{quantity}</output>
@@ -208,8 +221,8 @@ function ProductView({ product }: { product: Product }) {
         <ProductRail title={`Más en ${goalName(goal.slug)}`} products={relatedProducts} loading={related.loading} viewAll={{ to: catalogHref({ goals: [goal.slug] }), label: "Ver todo" }} />
       )}
 
-      <div className="mobile-buy-bar">
-        <span><small>{variantLabel(variant)}</small><strong>{formatMoney(variant.price)}</strong></span>
+      <div className={`mobile-buy-bar ${buyBarHidden ? "is-hidden" : ""}`} inert={buyBarHidden} aria-hidden={buyBarHidden || undefined}>
+        <span><small>{[sizeLabel(variant), variant.flavor].filter(Boolean).join(" · ")}</small><strong>{formatMoney(variant.price)}</strong></span>
         <button type="button" className="btn btn-primary" disabled={soldOut} aria-disabled={adding} onClick={() => void add()}>{soldOut ? "Agotado" : adding ? "Agregado ✓" : "Agregar al carrito"}</button>
       </div>
     </div>
@@ -229,7 +242,7 @@ function ProductStatus({ missing, error, onRetry }: { missing: boolean; error?: 
   const heading = useRef<HTMLHeadingElement>(null);
   usePageEntry(missing ? "Producto no disponible" : error ? "Producto sin conexión" : "Cargando producto", heading);
   return (
-    <div className="container status-page">
+    <div className={`container status-page ${!missing && !error ? "loading-page" : ""}`}>
       {missing ? (
         <>
           <h1 ref={heading} tabIndex={-1}>Este producto no está disponible</h1>

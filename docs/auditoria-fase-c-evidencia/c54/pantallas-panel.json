@@ -1,0 +1,1208 @@
+{
+ "panel 320 iPhone SE 1 · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 320 iPhone SE 1 · home": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 12,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 320 iPhone SE 1 · products": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 12,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 320 iPhone SE 1 · orders": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 12,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 320 iPhone SE 1 · inventory": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 12,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 320 iPhone SE 1 · management": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 12,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 320 iPhone SE 1 · settings": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 12,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 320 iPhone SE 1 · editor": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 23,
+  "bars": [
+   "header.topbar 66px",
+   "div.floating-actions 63px"
+  ],
+  "under24": []
+ },
+ "panel 360 Android · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 360 Android · home": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 9,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 360 Android · products": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 9,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 360 Android · orders": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 9,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 360 Android · inventory": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 9,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 360 Android · management": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 9,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 360 Android · settings": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 9,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 360 Android · editor": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 17,
+  "bars": [
+   "header.topbar 66px",
+   "div.floating-actions 63px"
+  ],
+  "under24": []
+ },
+ "panel 375 iPhone 8 · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 375 iPhone 8 · home": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 10,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 375 iPhone 8 · products": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 10,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 375 iPhone 8 · orders": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 10,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 375 iPhone 8 · inventory": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 10,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 375 iPhone 8 · management": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 10,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 375 iPhone 8 · settings": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 10,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 375 iPhone 8 · editor": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 19,
+  "bars": [
+   "header.topbar 66px",
+   "div.floating-actions 63px"
+  ],
+  "under24": []
+ },
+ "panel 390 iPhone 14 · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 390 iPhone 14 · home": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 8,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": [],
+  "axe": []
+ },
+ "panel 390 iPhone 14 · products": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 8,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 390 iPhone 14 · orders": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 8,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 390 iPhone 14 · inventory": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 8,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 390 iPhone 14 · management": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 8,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 390 iPhone 14 · settings": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 8,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 390 iPhone 14 · editor": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 15,
+  "bars": [
+   "header.topbar 66px",
+   "div.floating-actions 63px"
+  ],
+  "under24": []
+ },
+ "panel 430 iPhone Pro Max · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 430 iPhone Pro Max · home": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 7,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 430 iPhone Pro Max · products": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 7,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 430 iPhone Pro Max · orders": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 7,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 430 iPhone Pro Max · inventory": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 7,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 430 iPhone Pro Max · management": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 7,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 430 iPhone Pro Max · settings": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 7,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 430 iPhone Pro Max · editor": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 14,
+  "bars": [
+   "header.topbar 66px",
+   "div.floating-actions 63px"
+  ],
+  "under24": []
+ },
+ "panel 568×320 horizontal · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 568×320 horizontal · home": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 568×320 horizontal · products": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 568×320 horizontal · orders": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 568×320 horizontal · inventory": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 568×320 horizontal · management": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 568×320 horizontal · settings": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 568×320 horizontal · editor": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 18,
+  "bars": [
+   "div.floating-actions 59px"
+  ],
+  "under24": []
+ },
+ "panel 844×390 horizontal · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 844×390 horizontal · home": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 844×390 horizontal · products": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 844×390 horizontal · orders": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 844×390 horizontal · inventory": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 844×390 horizontal · management": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 844×390 horizontal · settings": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 844×390 horizontal · editor": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 15,
+  "bars": [
+   "div.floating-actions 59px"
+  ],
+  "under24": []
+ },
+ "panel 768 iPad vertical · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 768 iPad vertical · home": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 6,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 768 iPad vertical · products": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 6,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 768 iPad vertical · orders": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 6,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 768 iPad vertical · inventory": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 6,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 768 iPad vertical · management": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 6,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 768 iPad vertical · settings": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 6,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 768 iPad vertical · editor": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 13,
+  "bars": [
+   "header.topbar 66px",
+   "div.floating-actions 67px"
+  ],
+  "under24": []
+ },
+ "panel 820 iPad Air vertical · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 820 iPad Air vertical · home": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 6,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 820 iPad Air vertical · products": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 6,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 820 iPad Air vertical · orders": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 6,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 820 iPad Air vertical · inventory": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 6,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 820 iPad Air vertical · management": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 6,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 820 iPad Air vertical · settings": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 6,
+  "bars": [
+   "header.topbar 66px"
+  ],
+  "under24": []
+ },
+ "panel 820 iPad Air vertical · editor": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 11,
+  "bars": [
+   "header.topbar 66px",
+   "div.floating-actions 67px"
+  ],
+  "under24": []
+ },
+ "panel 1024 iPad horizontal · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1024 iPad horizontal · home": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 9,
+  "bars": [
+   "header.topbar 72px"
+  ],
+  "under24": []
+ },
+ "panel 1024 iPad horizontal · products": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 9,
+  "bars": [
+   "header.topbar 72px"
+  ],
+  "under24": []
+ },
+ "panel 1024 iPad horizontal · orders": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 9,
+  "bars": [
+   "header.topbar 72px"
+  ],
+  "under24": []
+ },
+ "panel 1024 iPad horizontal · inventory": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 9,
+  "bars": [
+   "header.topbar 72px"
+  ],
+  "under24": []
+ },
+ "panel 1024 iPad horizontal · management": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 9,
+  "bars": [
+   "header.topbar 72px"
+  ],
+  "under24": []
+ },
+ "panel 1024 iPad horizontal · settings": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 9,
+  "bars": [
+   "header.topbar 72px"
+  ],
+  "under24": []
+ },
+ "panel 1024 iPad horizontal · editor": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 18,
+  "bars": [
+   "header.topbar 72px",
+   "div.floating-actions 67px"
+  ],
+  "under24": []
+ },
+ "panel 1180 iPad Air horizontal · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1180 iPad Air horizontal · home": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1180 iPad Air horizontal · products": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1180 iPad Air horizontal · orders": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1180 iPad Air horizontal · inventory": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1180 iPad Air horizontal · management": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1180 iPad Air horizontal · settings": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1180 iPad Air horizontal · editor": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1280 portátil · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1280 portátil · home": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1280 portátil · products": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1280 portátil · orders": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1280 portátil · inventory": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1280 portátil · management": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1280 portátil · settings": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1280 portátil · editor": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1440 escritorio · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1440 escritorio · home": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": [],
+  "axe": []
+ },
+ "panel 1440 escritorio · products": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1440 escritorio · orders": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1440 escritorio · inventory": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1440 escritorio · management": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1440 escritorio · settings": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1440 escritorio · editor": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1920 Full HD · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1920 Full HD · home": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1920 Full HD · products": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1920 Full HD · orders": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1920 Full HD · inventory": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1920 Full HD · management": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1920 Full HD · settings": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 1920 Full HD · editor": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 2560 QHD · acceso": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 2560 QHD · home": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 2560 QHD · products": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 2560 QHD · orders": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 2560 QHD · inventory": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 2560 QHD · management": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 2560 QHD · settings": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ },
+ "panel 2560 QHD · editor": {
+  "scrollX": 0,
+  "overflow": [],
+  "clipped": [],
+  "smallInputs": [],
+  "coveredPct": 0,
+  "bars": [],
+  "under24": []
+ }
+}
