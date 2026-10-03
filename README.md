@@ -138,7 +138,7 @@ El panel avisa en Configuracion cuando ningun canal esta configurado, porque en 
 
 ### API
 
-`render.yaml` es un blueprint listo para Render: instala en la raíz del monorepo, compila el workspace de la API y expone `/health` como health check.
+`render.yaml` es un blueprint listo para Render: instala en la raíz del monorepo (con las dependencias de desarrollo, que la compilación necesita), compila el workspace de la API con Node 22 en la región de Virginia, la más cercana a Atlas, y expone `/health` como health check. La guía paso a paso está en [docs/despliegue-web.md](docs/despliegue-web.md).
 
 Variables obligatorias en producción, sin las cuales la API se niega a arrancar:
 
@@ -154,25 +154,25 @@ Si se configura `MONGODB_URI` y MongoDB no responde o no admite transacciones, e
 
 ### Tienda y panel
 
-Ambas SPA se publican en Netlify con la configuración de su carpeta. Cada sitio necesita apuntar a la API desplegada:
+Ambas SPA se publican en Azure Static Web Apps con los flujos de GitHub Actions `.github/workflows/azure-tienda.yml` y `azure-panel.yml`, que compilan con las URL de producción guardadas como variables del repositorio:
 
 ```bash
 # apps/web
 VITE_GRAPHQL_URL=https://rawenergy-api.onrender.com/graphql
-VITE_ADMIN_URL=https://admin-rawenergy.netlify.app
+VITE_ADMIN_URL=https://<panel>.azurestaticapps.net
 
 # apps/admin
 VITE_GRAPHQL_URL=https://rawenergy-api.onrender.com/graphql
-VITE_WEB_URL=https://rawenergy.netlify.app
+VITE_WEB_URL=https://<tienda>.azurestaticapps.net
 ```
 
-Esos dos dominios de Netlify son los que deben ir en `CORS_ORIGINS` de la API.
+Esos dos dominios de Azure son los que deben ir en `CORS_ORIGINS` de la API. Las rutas, la caché y las cabeceras de cada sitio están en su `public/staticwebapp.config.json`.
 
 ### Orden de despliegue
 
-1. Crea el clúster de MongoDB Atlas y autoriza el acceso desde el proveedor de la API.
-2. Despliega la API con `render.yaml` y carga las variables de la tabla anterior. Al terminar, apunta `PUBLIC_API_URL` al dominio que te asignó Render y vuelve a desplegar.
-3. Publica la tienda y el panel en Netlify con `VITE_GRAPHQL_URL` apuntando a la API.
-4. Vuelve a la API y pon los dos dominios de Netlify en `CORS_ORIGINS`.
+1. En Atlas, autoriza las IP de salida de Render (Connect → Outbound del servicio).
+2. Despliega la API con `render.yaml`, carga las variables de la tabla anterior y apunta `PUBLIC_API_URL` al dominio que te asignó Render.
+3. Crea en Azure dos Static Web Apps con origen «Otro», guarda sus tokens y las variables `VITE_*` en GitHub y ejecuta los dos flujos.
+4. Vuelve a la API y pon los dos dominios de Azure en `CORS_ORIGINS`, `STORE_URL` y `ADMIN_APP_URL`.
 
-El paso 4 va al final a propósito: hasta que Netlify no asigna los dominios no se sabe qué autorizar.
+El paso 4 va al final a propósito: hasta que Azure no asigna los dominios no se sabe qué autorizar. Detalle de cada paso en [docs/despliegue-web.md](docs/despliegue-web.md).

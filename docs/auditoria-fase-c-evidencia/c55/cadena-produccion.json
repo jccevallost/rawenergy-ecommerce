@@ -1,0 +1,82 @@
+[
+ {
+  "s": "390px · ficha abierta directo (ruta profunda) con datos de Atlas",
+  "ok": true,
+  "h1": "Gold Standard 100% Whey",
+  "precio": "$59,90",
+  "foto": {
+   "origen": "http://localhost:4100",
+   "cargada": true
+  }
+ },
+ {
+  "s": "390px · la foto viene de la API pública y carga",
+  "ok": true,
+  "origen": "http://localhost:4100",
+  "cargada": true
+ },
+ {
+  "s": "390px · catálogo con productos y fotos",
+  "ok": true,
+  "tarjetas": 20,
+  "conteo": "20 productos",
+  "fotos": 19
+ },
+ {
+  "s": "390px · portada con campañas y sin «No hay conexión»",
+  "ok": true,
+  "campana": true,
+  "sinConexion": false
+ },
+ {
+  "s": "390px · sin errores de consola ni peticiones fallidas (CORS)",
+  "ok": false,
+  "errores": [
+   "Failed to load resource: the server responded with a status of 404 (Not Found) ← http://localhost:4280/favicon.ico"
+  ],
+  "fallidas": []
+ },
+ {
+  "s": "1440px · ficha abierta directo (ruta profunda) con datos de Atlas",
+  "ok": true,
+  "h1": "Gold Standard 100% Whey",
+  "precio": "$59,90",
+  "foto": {
+   "origen": "http://localhost:4100",
+   "cargada": true
+  }
+ },
+ {
+  "s": "1440px · la foto viene de la API pública y carga",
+  "ok": true,
+  "origen": "http://localhost:4100",
+  "cargada": true
+ },
+ {
+  "s": "1440px · catálogo con productos y fotos",
+  "ok": true,
+  "tarjetas": 20,
+  "conteo": "20 productos",
+  "fotos": 19
+ },
+ {
+  "s": "1440px · portada con campañas y sin «No hay conexión»",
+  "ok": true,
+  "campana": true,
+  "sinConexion": false
+ },
+ {
+  "s": "1440px · sin errores de consola ni peticiones fallidas (CORS)",
+  "ok": true,
+  "errores": [],
+  "fallidas": []
+ },
+ {
+  "s": "panel · pantalla de acceso en el emulador",
+  "ok": true,
+  "correo": true,
+  "clave": true,
+  "titulo": "RawEnergy EC | Administración",
+  "errores": []
+ }
+]

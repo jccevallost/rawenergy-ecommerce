@@ -24,6 +24,7 @@ import { commerceSettingsService } from "../services/commerceSettings.service.js
 import { notificationOutbox } from "../services/outbox.service.js";
 import { emailDomainService } from "../services/emailDomain.service.js";
 import { emailProblem, emailSuggestion } from "../data/ecuador.js";
+import { publicMediaUrl } from "../lib/mediaUrl.js";
 
 const goalArgs = z.object({ goalSlug: z.string().regex(/^[a-z0-9-]+$/), limit: z.number().int().min(1).max(24).default(8) });
 const searchArgs = z.object({
@@ -92,7 +93,7 @@ const baseResolvers = {
   JSON: jsonScalar,
   User: { createdAt: (user: AuthUser) => dateString(user.createdAt), lastLoginAt: (user: AuthUser) => dateString(user.lastLoginAt) },
   Campaign: {
-    imageUrl: (campaign: Campaign) => campaign.imageUrl || null,
+    imageUrl: (campaign: Campaign) => publicMediaUrl(campaign.imageUrl || null),
     products: (campaign: Campaign, args: { limit?: number }) => safe(() => campaignService.products(campaign, z.number().int().min(1).max(24).parse(args.limit ?? 8)))
   },
   Product: {
@@ -108,8 +109,10 @@ const baseResolvers = {
     // Version plana de images: atravesar variants { images { url } } pasa del
     // limite de profundidad, asi que el catalogo se quedaba sin las fotos.
     imageAlts: (variant: { images?: Array<{ alt: string }> }) => variant.images?.map(image => image.alt) ?? [],
-    imageUrls: (variant: { images?: Array<{ url: string }> }) => variant.images?.map((image) => image.url) ?? []
+    imageUrls: (variant: { images?: Array<{ url: string }> }) => variant.images?.map((image) => publicMediaUrl(image.url)) ?? []
   },
+  ProductImage: { url: (image: { url: string }) => publicMediaUrl(image.url) },
+  OrderItem: { image: (item: { image?: string | null }) => publicMediaUrl(item.image ?? null) },
   Order: {
     paidAt: (order: {paidAt?: Date | null}) => dateString(order.paidAt),
     allowedNextStatuses: (order: { status: OrderStatus; paymentMethod?: string; confirmedAt?: Date | null }) => nextStatuses(order.status, order.paymentMethod, order.confirmedAt),

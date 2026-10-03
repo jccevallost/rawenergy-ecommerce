@@ -1,0 +1,29 @@
+{
+  "fecha": "2026-10-02",
+  "entorno": "Local (macOS, Node 22.14.0). API compilada desde una copia limpia del repositorio (498 archivos, sin .env) en modo producción contra MongoDB Atlas (solo lectura). Tienda y panel servidos con @azure/static-web-apps-cli 2.0.10. No certifica los servidores definitivos.",
+  "atlas": { "conexion": "2,2 s desde esta red", "base": "rawenergy_ec", "productos": 21, "region": "AWS SA_EAST_1 (São Paulo)", "mongodb": "8.0.34" },
+  "render_build": {
+    "comando_anterior": { "cmd": "NODE_ENV=production npm ci && npm run build --workspace @vital-forge/api", "exit": 127, "error": "sh: tsc: command not found" },
+    "comando_nuevo": { "cmd": "NODE_ENV=production npm ci --include=dev && npm run build --workspace @vital-forge/api", "exit": 0 }
+  },
+  "api_produccion": {
+    "health": "{\"status\":\"ok\"}",
+    "persistencia": "mongodb",
+    "cors_origen_permitido": "Access-Control-Allow-Origin presente",
+    "cors_origen_ajeno": "sin Access-Control-Allow-Origin",
+    "fotos": "7 URL guardadas en Atlas con http://localhost:4000; servidas con PUBLIC_API_URL (10 de 10 en el catálogo); la foto responde 200 image/webp"
+  },
+  "emulador_azure_tienda": {
+    "/": "200 no-cache",
+    "/producto/gold-standard-100-whey": "200 (aplicación) no-cache",
+    "/catalogo?uso=energia": "200 (aplicación) no-cache",
+    "/ruta-inventada": "200 (aplicación, la tienda muestra «No encontramos esta página»)",
+    "/assets/index-*.js": "200 public, max-age=31536000, immutable",
+    "/assets/brands/no-existe.png": "404",
+    "cabeceras": "X-Content-Type-Options: nosniff, X-Frame-Options: DENY"
+  },
+  "emulador_azure_panel": { "/": "200 no-cache, X-Robots-Tag: noindex, nofollow, Referrer-Policy: no-referrer, X-Frame-Options: DENY" },
+  "cadena_completa": "10/11: el único fallo es /favicon.ico (404): ni la tienda ni el panel declaran icono; pendiente de un icono cuadrado de la marca",
+  "actionlint": "1.7.12, sin errores en los dos flujos",
+  "pruebas": { "api": 164, "tienda": 19, "compartidas": 39, "panel": 23, "tipos": "7/7", "compilacion": "5/5" }
+}

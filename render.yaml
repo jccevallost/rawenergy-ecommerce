@@ -1,36 +1,67 @@
 # Blueprint de Render para la API de RawEnergy EC.
 # El repositorio es un monorepo npm workspaces: se instala en la raiz y se
-# compila solo el workspace de la API.
+# compila solo el workspace de la API. La tienda y el panel se publican en
+# Azure Static Web Apps (ver docs/despliegue-web.md).
 services:
   - type: web
     name: rawenergy-api
     runtime: node
+    # El plan gratuito se duerme tras unos minutos sin visitas y la primera
+    # peticion espera a que despierte. Para la tienda abierta al publico
+    # conviene un plan pago (se cambia en Render sin tocar este archivo).
     plan: free
-    region: oregon
-    buildCommand: npm ci && npm run build --workspace @vital-forge/api
+    # Atlas esta en AWS Sao Paulo (SA_EAST_1). Render no tiene region en
+    # Sudamerica; Virginia es la mas cercana. La region no se puede cambiar
+    # despues de crear el servicio.
+    region: virginia
+    # Con NODE_ENV=production, `npm ci` omite las dependencias de desarrollo y
+    # la compilacion se queda sin TypeScript: por eso --include=dev.
+    buildCommand: npm ci --include=dev && npm run build --workspace @vital-forge/api
     startCommand: node apps/api/dist/server.js
     healthCheckPath: /health
+    # Solo se vuelve a desplegar cuando cambia la API, no con cambios de la
+    # tienda o del panel.
+    buildFilter:
+      paths:
+        - apps/api/**
+        - package.json
+        - package-lock.json
+        - render.yaml
     envVars:
       - key: NODE_ENV
         value: production
+      # La misma version con la que se probo (22.x).
+      - key: NODE_VERSION
+        value: "22"
       # Render genera el secreto una sola vez y lo conserva entre despliegues.
       - key: AUTH_TOKEN_SECRET
         generateValue: true
       - key: FREE_SHIPPING_THRESHOLD
         value: 75
-      # sync:false = se cargan a mano en el panel y no viajan en el repositorio.
+      # sync:false = se cargan a mano en Render y no viajan en el repositorio.
+      # Cadena de Atlas con el nombre de la base: .../rawenergy_ec?...
       - key: MONGODB_URI
         sync: false
+      # Solo crean la cuenta de administracion si ese correo no existe todavia.
+      # Cambiarlas despues no cambia la contrasena: eso se hace desde el panel.
       - key: ADMIN_EMAIL
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
-      # Dominios de Netlify de la tienda y del panel, separados por coma.
+      # Direcciones de Azure de la tienda y del panel, separadas por coma, con
+      # https y sin barra final. Sin ellas el navegador bloquea las consultas.
       - key: CORS_ORIGINS
         sync: false
-      # Dominio publico de este servicio. Se usa para armar las URL de las
-      # fotos que se sirven desde /media.
+      # Direccion publica de este servicio (https://...onrender.com). Se usa
+      # para armar las URL de las fotos que se sirven desde /media.
       - key: PUBLIC_API_URL
+        sync: false
+      # Direccion de la tienda en Azure.
+      - key: STORE_URL
+        sync: false
+      # Direccion del panel en Azure: enlace para restablecer la contrasena y
+      # «Abrir el panel» del aviso de pedido nuevo.
+      - key: ADMIN_APP_URL
         sync: false
       # Correo saliente. Sirve cualquier proveedor SMTP.
       - key: SMTP_HOST

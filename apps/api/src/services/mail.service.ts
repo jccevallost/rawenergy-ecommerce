@@ -193,7 +193,7 @@ class MailService {
         ${escape(shippingLabels[order.shippingMethod])} · ${order.paymentMethod === "CASH_ON_DELIVERY" ? "<strong>Pago contra entrega</strong>" : "Pago por transferencia"}.
         ${order.paymentReference ? `<br>Comprobante declarado: <strong>${escape(order.paymentReference)}</strong>` : ""}
       </p>
-      ${env.STORE_URL ? `<p style="margin:16px 0 0"><a href="${escape(env.STORE_URL)}" style="font-size:13px;font-weight:bold;color:#1a1e1b">Abrir el panel</a></p>` : ""}`,
+      ${env.ADMIN_APP_URL ? `<p style="margin:16px 0 0"><a href="${escape(env.ADMIN_APP_URL)}" style="font-size:13px;font-weight:bold;color:#1a1e1b">Abrir el panel</a></p>` : ""}`,
       "Aviso interno de la tienda. Lo recibe el correo configurado como operador.");
     return this.send(env.mailOperator, `Pedido nuevo ${order.orderNumber}`, html);
   }
