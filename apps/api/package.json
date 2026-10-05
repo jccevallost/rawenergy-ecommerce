@@ -23,15 +23,15 @@
     "graphql-depth-limit": "^1.1.0",
     "mongoose": "^8.15.1",
     "nodemailer": "^10.0.14",
-    "sharp": "^0.35.4",
+    "sharp": "^0.35.5",
     "zod": "^3.25.51"
   },
   "devDependencies": {
     "@types/cors": "^2.8.18",
     "@types/express": "^5.0.2",
     "@types/graphql-depth-limit": "^1.1.6",
-    "@types/nodemailer": "^8.0.1",
-    "tsx": "^4.19.4",
+    "@types/nodemailer": "^8.0.2",
+    "tsx": "^4.23.15",
     "vitest": "^4.1.11"
   }
 }

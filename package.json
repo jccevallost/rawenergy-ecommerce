@@ -19,7 +19,7 @@
     "check:graphql": "node --import tsx scripts/check-graphql.mts"
   },
   "devDependencies": {
-    "turbo": "^2.5.4",
+    "turbo": "^2.11.6",
     "typescript": "^5.8.3"
   },
   "engines": { "node": ">=20" }
