@@ -14,6 +14,18 @@ const schema = z.object({
   ORDER_RESERVATION_HOURS: z.coerce.number().int().min(1).max(168).default(24),
   // Peticiones GraphQL por minuto y por IP antes de responder 429.
   GRAPHQL_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(10).max(10000).default(120),
+  // Cabecera con la IP real del visitante que pone el proxy de confianza (en Render,
+  // Cloudflare: cf-connecting-ip). Sin ella se usa req.ip con `trust proxy` (C60, S02).
+  // Solo se define si el proxy sobrescribe la cabecera: si el cliente pudiera enviarla, la falsificaría.
+  CLIENT_IP_HEADER: z.string().regex(/^[a-z0-9-]+$/i).optional(),
+  // Días que se conserva la bitácora de auditoría (contiene datos personales; LOPDP).
+  AUDIT_RETENTION_DAYS: z.coerce.number().int().min(30).max(3650).default(365),
+  // Pedidos sin pagar o sin confirmar que una misma persona (documento, celular o correo) puede tener a la vez.
+  // En las pruebas automáticas se sube a 20: muchas crean varios pedidos del mismo cliente de prueba.
+  // Cloudflare Turnstile (C70): CAPTCHA en registro y pedidos nuevos si están las dos claves.
+  TURNSTILE_SITE_KEY: z.string().min(10).max(100).optional(),
+  TURNSTILE_SECRET_KEY: z.string().min(10).max(200).optional(),
+  MAX_PENDING_ORDERS_PER_CUSTOMER: z.coerce.number().int().min(1).max(20).default(process.env.NODE_ENV === "test" ? 20 : 2),
   AUTH_TOKEN_SECRET: z.string().min(32).optional(),
   ADMIN_EMAIL: z.string().email().optional(),
   ADMIN_PASSWORD: z.string().min(8).optional(),
@@ -65,11 +77,12 @@ const isProduction = parsed.data.NODE_ENV === "production";
 
 // En produccion no se arranca con secretos de desarrollo: un token firmado con el
 // secreto por defecto lo puede falsificar cualquiera que lea el repositorio, y una
-// cuenta admin con contraseña conocida es una puerta abierta.
+// cuenta admin con contraseña conocida es una puerta abierta. ADMIN_PASSWORD solo
+// hace falta para crear la primera cuenta de administración; despues se puede
+// quitar (C60, S11) y bootstrapAdmin se niega a arrancar si no hay ninguna.
 if (isProduction) {
   const missing: string[] = [];
   if (!parsed.data.AUTH_TOKEN_SECRET) missing.push("AUTH_TOKEN_SECRET (minimo 32 caracteres)");
-  if (!parsed.data.ADMIN_PASSWORD) missing.push("ADMIN_PASSWORD");
   if (!parsed.data.MONGODB_URI) missing.push("MONGODB_URI");
   if (missing.length) {
     throw new Error(`Faltan variables obligatorias en produccion: ${missing.join(", ")}`);
@@ -82,7 +95,7 @@ export const env = {
   isProduction,
   authTokenSecret: parsed.data.AUTH_TOKEN_SECRET ?? "rawenergy-dev-secret-change-me",
   adminEmail: (parsed.data.ADMIN_EMAIL ?? "admin@rawenergy.ec").toLowerCase(),
-  adminPassword: parsed.data.ADMIN_PASSWORD ?? "Admin123!",
+  adminPassword: parsed.data.ADMIN_PASSWORD ?? (isProduction ? "" : "Admin123!"),
   adminName: parsed.data.ADMIN_NAME ?? "Andrea Admin",
   telegramApiUrl: (parsed.data.TELEGRAM_API_URL ?? "https://api.telegram.org").replace(/\/$/, ""),
   mailOperator: parsed.data.MAIL_OPERATOR ?? (parsed.data.ADMIN_EMAIL ?? "admin@rawenergy.ec").toLowerCase(),

@@ -2,7 +2,7 @@ import { unitOfWork, operationContext, registerMemoryStore } from "../lib/unitOf
 import type { StockLot } from "./stockLedger.service.js";
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { createHash } from "node:crypto";
+import { createHash, randomInt } from "node:crypto";
 import { z } from "zod";
 import { evaluateCode, notEligible, personKeys, prorate, redemptions, type AppliedDiscount } from "./welcomeDiscount.service.js";
 import { env } from "../config/env.js";
@@ -61,12 +61,26 @@ type MemoryOrder = {
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+const plain = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+/**
+ * «Sabor - tamaño» de la línea del pedido (mensaje de WhatsApp, correos, Mis pedidos), igual que
+ * la tienda (C63): coma decimal («5,5 lb») y sin repetir el formato («Cápsulas» en «60 cápsulas»).
+ */
+export function presentationLabel(flavor: string, size: { value: number; unit: string }) {
+  const sizeText = `${String(size.value).replace(".", ",")} ${size.unit}`.trim();
+  return !flavor?.trim() || plain(sizeText).includes(plain(flavor)) ? sizeText : `${flavor} - ${sizeText}`;
+}
+
 // Date.now() repite valor si llegan dos ordenes en el mismo milisegundo, y dos
 // ordenes con el mismo id harian que cambiar el estado de una mueva a la otra.
 let memorySequence = 0;
 const memoryId = () => `memory-${Date.now()}-${++memorySequence}`;
 
-const orderNumber = () => `RE-${new Date().toISOString().slice(2, 10).replace(/-/g, "")}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+// El número acompaña al correo o celular en la consulta de pedido: se genera con el
+// generador criptográfico (C60, S17). 6 caracteres de 36 posibles por día; el índice
+// único del modelo impide repetidos.
+const ORDER_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const orderNumber = () => `RE-${new Date().toISOString().slice(2, 10).replace(/-/g, "")}-${Array.from({ length: 6 }, () => ORDER_ALPHABET[randomInt(ORDER_ALPHABET.length)]).join("")}`;
 
 class OrderService {
   private memory: MemoryOrder[] = [];
@@ -75,8 +89,8 @@ class OrderService {
     return mongoose.connection.readyState === 1;
   }
 
-  async create(rawInput: unknown, user?: AuthUser | null): Promise<MemoryOrder | import("mongoose").HydratedDocument<import("../models/Order.js").OrderDocument>> {
-    if (!operationContext.getStore()) return unitOfWork(() => this.create(rawInput, user));
+  async create(rawInput: unknown, user?: AuthUser | null, options: { beforeNew?: () => Promise<void> } = {}): Promise<MemoryOrder | import("mongoose").HydratedDocument<import("../models/Order.js").OrderDocument>> {
+    if (!operationContext.getStore()) return unitOfWork(() => this.create(rawInput, user, options));
     const input = checkoutInputSchema.parse(rawInput);
     const { idempotencyKey, ...request } = input;
     const requestKey = idempotencyKey ? createHash("sha256").update(`${user?.id ?? "guest"}:${idempotencyKey}`).digest("hex") : undefined;
@@ -88,8 +102,15 @@ class OrderService {
         return previous;
       }
     }
+    // Pedido nuevo (no es un reintento): comprobación de persona si está activa (C70).
+    await options.beforeNew?.();
     if (input.shippingMethod === "EXPRESS_QUITO_VALLES" && !isExpressArea(input.customer.province, input.customer.city)) {
       throw new Error("El envío express cubre Quito (con Cumbayá, Tumbaco y Conocoto) y Rumiñahui (Sangolquí). Para otra ciudad elige envío nacional.");
+    }
+    // Acaparamiento (C60, S04): cada pedido reserva stock hasta el pago o la confirmación;
+    // una misma persona no puede tener más de MAX_PENDING_ORDERS_PER_CUSTOMER a la vez.
+    if (await this.pendingOrders(input.customer) >= env.MAX_PENDING_ORDERS_PER_CUSTOMER) {
+      throw new GraphQLError(`Ya tienes ${env.MAX_PENDING_ORDERS_PER_CUSTOMER === 1 ? "un pedido pendiente" : `${env.MAX_PENDING_ORDERS_PER_CUSTOMER} pedidos pendientes`} de pago o de confirmación. Complétalos o escríbenos por WhatsApp antes de hacer otro.`, { extensions: { code: "TOO_MANY_PENDING_ORDERS" } });
     }
     const emailIssue = await emailDomainService.problem(input.customer.email);
     if (emailIssue) throw new GraphQLError(emailIssue, { extensions: { code: "BAD_USER_INPUT", field: "email" } });
@@ -113,7 +134,7 @@ class OrderService {
         productId,
         variantSku: variant.sku,
         title: product.title,
-        variantLabel: `${variant.flavor} - ${variant.size.value} ${variant.size.unit}`,
+        variantLabel: presentationLabel(variant.flavor, variant.size),
         image: variant.images?.[0]?.url ?? "",
         quantity: item.quantity,
         unitPrice: variant.price,
@@ -191,6 +212,12 @@ class OrderService {
   }
 
   /** ¿La persona (documento, celular o correo) ya tiene pedidos que no se cancelaron? */
+  private async pendingOrders(customer: { idNumber: string; phone: string; email: string }) {
+    const email = customer.email.trim().toLowerCase();
+    if (this.useMongo) return OrderModel.countDocuments({ status: "PENDING_PAYMENT", $or: [{ "customer.idNumber": customer.idNumber }, { "customer.phone": customer.phone }, { "customer.email": email }] });
+    return this.memory.filter(order => order.status === "PENDING_PAYMENT" && (order.customer.idNumber === customer.idNumber || order.customer.phone === customer.phone || order.customer.email.toLowerCase() === email)).length;
+  }
+
   private async hasOrders(customer: { idNumber: string; phone: string; email: string }) {
     const email = customer.email.trim().toLowerCase();
     if (this.useMongo) return Boolean(await OrderModel.exists({ status: { $ne: "CANCELLED" }, $or: [{ "customer.idNumber": customer.idNumber }, { "customer.phone": customer.phone }, { "customer.email": email }] }));

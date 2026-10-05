@@ -10,6 +10,8 @@ const mediaSchema = new Schema({
   size: { type: Number, required: true, min: 1 },
   width: Number, height: Number, label: { type: String, default: "" },
   thumbnail: Buffer,
+  // 720 px (C64): tarjetas en pantallas de alta densidad; se genera al pedirla la primera vez.
+  medium: Buffer,
   data: { type: Buffer, required: true }
 }, { timestamps: true, _id: false });
 

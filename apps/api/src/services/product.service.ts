@@ -13,7 +13,7 @@ import { sellablePriceRange } from "../lib/priceRange.js";
 import { evaluateCode } from "./welcomeDiscount.service.js";
 
 type ProductStatus = "ACTIVE" | "ARCHIVED" | "ALL";
-type SearchFilters = { search?: string; brands?: string[]; goals?: string[]; flavors?: string[]; status?: ProductStatus; sort?: "PRICE_ASC" | "PRICE_DESC"; minPrice?: number; maxPrice?: number; inStock?: boolean; featured?: boolean };
+type SearchFilters = { search?: string; brands?: string[]; categories?: string[]; goals?: string[]; flavors?: string[]; status?: ProductStatus; sort?: "PRICE_ASC" | "PRICE_DESC"; minPrice?: number; maxPrice?: number; inStock?: boolean; featured?: boolean };
 type DemoRecord = ProductPayload & { id: string; priceRange: { min: number; max: number }; active: boolean; revision: number; variants: Array<ProductPayload["variants"][number] & { lots?: StockLot[] }> };
 export type TaxonomyKind = "CATEGORY" | "GOAL" | "BRAND";
 export type TaxonomyAction = "RENAME" | "MERGE" | "REMOVE";
@@ -219,6 +219,14 @@ class ProductService {
     return [...new Set(this.demo.filter(product => product.active).map(product => product.brand))].sort();
   }
 
+  /** Tipos de producto (categorías) con productos activos y cuántos hay de cada uno (C65, V16). */
+  async catalogCategories(): Promise<Array<{ slug: string; name: string; count: number }>> {
+    const rows = this.useMongo
+      ? await ProductModel.aggregate<{ _id: string; name: string; count: number }>([{ $match: { active: true } }, { $unwind: "$categories" }, { $group: { _id: "$categories.slug", name: { $first: "$categories.name" }, count: { $sum: 1 } } }])
+      : [...this.demo.filter(product => product.active).flatMap(product => product.categories).reduce((map, category) => map.set(category.slug, { _id: category.slug, name: category.name, count: (map.get(category.slug)?.count ?? 0) + 1 }), new Map<string, { _id: string; name: string; count: number }>()).values()];
+    return rows.map(row => ({ slug: row._id, name: row.name, count: row.count })).sort((a, b) => a.name.localeCompare(b.name, "es"));
+  }
+
   async search(filters: SearchFilters = {}, pagination: { first?: number; after?: string } = {}) {
     const first = Math.min(Math.max(pagination.first ?? 12, 1), 100);
     const cursor = decodeCursor(pagination.after);
@@ -247,6 +255,7 @@ class ProductService {
       }
       if (filters.brands?.length) query.brand = { $in: filters.brands.map((brand) => new RegExp(escapeRegex(brand), "i")) };
       if (filters.goals?.length) query["goals.slug"] = { $in: filters.goals };
+      if (filters.categories?.length) query["categories.slug"] = { $in: filters.categories };
       if (filters.flavors?.length) query["variants.flavor"] = { $in: filters.flavors };
       if (filters.inStock) query["variants.stock"] = { $gt: 0 };
       if (filters.featured) query.featured = true;
@@ -283,6 +292,7 @@ class ProductService {
         && terms.sizes.every(size => product.variants.some(v => v.size.value === size.value && v.size.unit === size.unit))
         && (!filters.brands?.length || filters.brands.some((brand) => product.brand.toLocaleLowerCase().includes(brand.toLocaleLowerCase())))
         && (!filters.goals?.length || product.goals.some((goal) => filters.goals!.includes(goal.slug)))
+        && (!filters.categories?.length || product.categories.some((category) => filters.categories!.includes(category.slug)))
         && (!filters.flavors?.length || product.variants.some((variant) => filters.flavors!.includes(variant.flavor)))
         && (!filters.inStock || product.variants.some(variant => variant.stock > 0))
         && (!filters.featured || product.featured === true)
@@ -584,7 +594,6 @@ class ProductService {
     const rules = settings ?? await commerceSettingsService.get();
     const freeShippingThreshold = rules.freeShippingThreshold;
     let subtotal = 0;
-    let earnedCoins = 0;
     for (const item of items) {
       const product = this.useMongo
         ? await ProductModel.findOne({ _id: item.productId, "variants.sku": item.variantSku, active: { $ne: false } }).lean()
@@ -593,7 +602,6 @@ class ProductService {
       const variant = product.variants.find((candidate) => candidate.sku === item.variantSku);
       if (!variant || variant.stock < item.quantity) throw new Error(`Stock insuficiente: ${item.variantSku}`);
       subtotal += Math.round(variant.price * item.quantity * 100) / 100;
-      earnedCoins += product.vitalCoinsReward * item.quantity;
     }
     subtotal = Math.round(subtotal * 100) / 100;
     // Código de bienvenida (C46): aquí solo se valida el código; la primera compra se comprueba al crear el pedido.
@@ -612,7 +620,7 @@ class ProductService {
       discountMessage: offer.message,
       shippingFee,
       total: Number((productsTotal + shippingFee).toFixed(2)),
-      earnedCoins,
+      earnedCoins: 0, // retirado en C67; se conserva en el esquema por compatibilidad
       freeShippingThreshold,
       amountUntilFreeShipping,
       hasFreeShipping: freeEligible && amountUntilFreeShipping === 0

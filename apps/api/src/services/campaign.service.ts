@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import mongoose from "mongoose";
 import { z } from "zod";
+import { IMAGE_URL } from "../validation/product.js";
 import { operationContext, registerMemoryStore, unitOfWork } from "../lib/unitOfWork.js";
 import { suggestedCampaigns } from "../data/suggestedCampaigns.js";
 import { productService } from "./product.service.js";
@@ -29,7 +30,7 @@ export const campaignInputSchema = z.object({
   goals: z.array(slug).max(6).default([]),
   brands: z.array(z.string().trim().min(1).max(80)).max(6).default([]),
   productIds: z.array(z.string().trim().min(1).max(80)).max(12).default([]),
-  imageUrl: z.string().trim().max(600).refine(value => value === "" || /^(https?:\/\/|\/(?!\/))[^\s]+$/i.test(value), "Usa una imagen de la biblioteca o una dirección http(s)").default("")
+  imageUrl: z.string().trim().max(600).refine(value => value === "" || IMAGE_URL.test(value), "Usa una imagen de la biblioteca o una dirección https").default("")
 }).strict()
   .refine(value => value.endsOn >= value.startsOn, { message: "La fecha final debe ser igual o posterior a la inicial", path: ["endsOn"] })
   .refine(value => value.goals.length + value.brands.length + value.productIds.length > 0, { message: "Elige al menos un objetivo, una marca o un producto", path: ["goals"] });

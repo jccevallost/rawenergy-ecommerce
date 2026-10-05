@@ -68,6 +68,10 @@ const orderSchema = new Schema({
 
 orderSchema.index({ createdAt: -1, status: 1 });
 orderSchema.index({ requestKey: 1 }, { unique: true, sparse: true });
+// Pedidos por persona: descuento de primera compra y tope de pendientes (C60, S04).
+orderSchema.index({ "customer.idNumber": 1, status: 1 });
+orderSchema.index({ "customer.phone": 1, status: 1 });
+orderSchema.index({ "customer.email": 1, status: 1 });
 
 export type OrderDocument = InferSchemaType<typeof orderSchema>;
 export const OrderModel = (models.Order ?? model<OrderDocument>("Order", orderSchema)) as Model<OrderDocument>;

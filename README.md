@@ -2,6 +2,8 @@
 
 Auditoría de tienda y coordinación Codex / Claude: [registro compartido de IHC, catálogo y checkout](docs/auditoria-ecommerce.md). Leerlo antes de continuar mejoras; incluye responsables, verificaciones y pendientes.
 
+> La carpeta `docs/` (auditorías, evidencias y guías de despliegue, pruebas locales, panel y comercial) no se publica en este repositorio: se conserva en el equipo del propietario. Los enlaces a `docs/` de este README solo funcionan en esa copia local.
+
 Plataforma de suplementación deportiva construida como monorepo TypeScript. Conviven tres aplicaciones independientes y dos paquetes compartidos:
 
 ```text

@@ -14,7 +14,11 @@ describe("Imágenes normalizadas en el servidor", () => {
     expect(saved).toMatchObject({ contentType: "image/webp", width: 1400, height: 700 });
     expect((await mediaService.save(input, "image/png")).id).toBe(saved.id);
     const file = await mediaService.get(saved.id); expect((await sharp(file!.data).metadata()).format).toBe("webp");
-    const thumbnail=await mediaService.get(saved.id,true);expect((await sharp(thumbnail!.data).metadata()).width).toBe(360);expect(thumbnail!.data.length).toBeLessThan(file!.data.length);
+    const thumbnail=await mediaService.get(saved.id,"thumb");expect((await sharp(thumbnail!.data).metadata()).width).toBe(360);expect(thumbnail!.data.length).toBeLessThan(file!.data.length);
+    // C64: tamaño intermedio de 720 px para pantallas de alta densidad; una foto chica se sirve igual.
+    const medium=await mediaService.get(saved.id,"medium");expect((await sharp(medium!.data).metadata()).width).toBe(720);expect(medium!.data.length).toBeLessThan(file!.data.length);
+    const small=await mediaService.save(await sharp({ create: { width: 500, height: 600, channels: 3, background: "#ffffff" } }).png().toBuffer(), "image/png");
+    expect((await sharp((await mediaService.get(small.id,"medium"))!.data).metadata()).width).toBe(500);
     await mediaService.rename(saved.id,"Creatina principal");expect((await mediaService.list(0,30,"Creatina")).total).toBe(1);expect((await mediaService.list(0,30,"sin coincidencias")).total).toBe(0);
     const product = structuredClone(demoProducts[1]!); product.slug = "media-reference-test"; product.variants[0]!.images = [{ url: `http://localhost:4000/media/${saved.id}`, alt: "Foto" }];
     await productService.upsert(undefined, product);

@@ -44,9 +44,22 @@ services:
         sync: false
       # Solo crean la cuenta de administracion si ese correo no existe todavia.
       # Cambiarlas despues no cambia la contrasena: eso se hace desde el panel.
+      # ADMIN_EMAIL debe ser propio (no admin@rawenergy.ec, que es publico). Una vez
+      # creada la cuenta, ADMIN_PASSWORD se puede borrar de Render (C60, S11).
       - key: ADMIN_EMAIL
         sync: false
       - key: ADMIN_PASSWORD
+        sync: false
+      # IP real del visitante (C60, S02): Render esta detras de Cloudflare, que
+      # sobrescribe esta cabecera en cada peticion. Sin ella, los limites por IP
+      # cuentan por la IP del proxy y los visitantes comparten cupo.
+      - key: CLIENT_IP_HEADER
+        value: cf-connecting-ip
+      # Cloudflare Turnstile (C70): CAPTCHA en registro y pedidos nuevos. Opcional: sin
+      # las dos claves no se pide. Se crean gratis en el panel de Cloudflare (Turnstile).
+      - key: TURNSTILE_SITE_KEY
+        sync: false
+      - key: TURNSTILE_SECRET_KEY
         sync: false
       # Direcciones de Azure de la tienda y del panel, separadas por coma, con
       # https y sin barra final. Sin ellas el navegador bloquea las consultas.

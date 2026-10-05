@@ -17,6 +17,10 @@ import { mediaService } from "../services/media.service.js";
 import { mergeProducts } from "../services/productMerge.service.js";
 import { jsonScalar } from "./jsonScalar.js";
 import { clientKey, operationLimiter } from "../lib/operationLimiter.js";
+import { trustedLogins } from "../lib/trustedLogins.js";
+import { turnstileEnabled, verifyHuman } from "../lib/turnstile.js";
+import { securityAlerts } from "../services/securityAlerts.service.js";
+import { MAX_UNITS_PER_LINE } from "../validation/order.js";
 import { expenseService } from "../services/expense.service.js";
 import { commercialService } from "../services/commercial.service.js";
 import { campaignService, campaignStatus, ecuadorToday, type Campaign } from "../services/campaign.service.js";
@@ -32,6 +36,7 @@ const searchArgs = z.object({
     search: z.string().max(80).optional(),
     brands: z.array(z.string().max(80)).max(12).optional(),
     goals: z.array(z.string()).max(12).optional(),
+    categories: z.array(z.string().regex(/^[a-z0-9-]+$/).max(80)).max(12).optional(),
     flavors: z.array(z.string()).max(20).optional(),
     status: z.enum(["ACTIVE", "ARCHIVED", "ALL"]).optional(),
     sort: z.enum(["PRICE_ASC", "PRICE_DESC"]).optional(),
@@ -43,7 +48,7 @@ const searchArgs = z.object({
   pagination: z.object({ first: z.number().int().min(1).max(100).optional(), after: z.string().max(300).optional() }).optional()
 });
 const cartArgs = z.object({
-  cartItems: z.array(z.object({ productId: z.string(), variantSku: z.string().min(3), quantity: z.number().int().min(1).max(99) })).max(100),
+  cartItems: z.array(z.object({ productId: z.string(), variantSku: z.string().min(3), quantity: z.number().int().min(1).max(MAX_UNITS_PER_LINE) })).max(100),
   shippingMethod: z.enum(["EXPRESS_QUITO_VALLES", "SERVIENTREGA_NATIONAL"]).optional(),
   discountCode: z.string().trim().max(30).nullish()
 });
@@ -87,11 +92,12 @@ const safe = async <T>(action: () => Promise<T>) => {
 const productId = (product: { id?: unknown; _id?: unknown }) => String(product.id ?? product._id);
 const orderId = (order: { id?: unknown; _id?: unknown }) => String(order.id ?? order._id);
 const dateString = (value?: Date | string | null) => value ? new Date(value).toISOString() : null;
-const defaultStoreBadges = ["Express 4h Quito y Valles", "Gratis en ordenes seleccionadas", "Producto original asegurado"];
+const PUBLIC_STOCK_CAP = MAX_UNITS_PER_LINE;
+const isStaff = (context: ResolverContext) => Boolean(context.user && context.user.role !== "CUSTOMER");
 
 const baseResolvers = {
   JSON: jsonScalar,
-  User: { createdAt: (user: AuthUser) => dateString(user.createdAt), lastLoginAt: (user: AuthUser) => dateString(user.lastLoginAt) },
+  User: { createdAt: (user: AuthUser) => dateString(user.createdAt), lastLoginAt: (user: AuthUser) => dateString(user.lastLoginAt), twoFactorEnabled: (user: AuthUser) => Boolean(user.twoFactorEnabled) },
   Campaign: {
     imageUrl: (campaign: Campaign) => publicMediaUrl(campaign.imageUrl || null),
     products: (campaign: Campaign, args: { limit?: number }) => safe(() => campaignService.products(campaign, z.number().int().min(1).max(24).parse(args.limit ?? 8)))
@@ -100,10 +106,18 @@ const baseResolvers = {
     revision: (product: {revision?:number}) => product.revision ?? 0,
     id: productId,
     primaryImage: (product: { variants?: Array<{ images?: Array<{ url: string; alt: string }> }> }) => product.variants?.find((variant) => variant.images?.length)?.images?.[0] ?? null,
-    storeBadges: (product: { storeBadges?: string[] }) => product.storeBadges?.length ? product.storeBadges : defaultStoreBadges
+    // Campos retirados en C67: valor fijo para clientes publicados antes del cambio.
+    vitalCoinsReward: () => 0,
+    maxInstallments: () => 1,
+    hasFreeShipping: () => false,
+    storeBadges: () => []
   },
   ProductVariant: {
     id: (variant: { id?: unknown; _id?: unknown; sku: string }) => String(variant.id ?? variant._id ?? variant.sku),
+    // C60 (S12): el público ve la disponibilidad acotada (bastan para «Quedan N» y para el tope por
+    // línea) y no el punto de reposición; el personal ve las cifras exactas.
+    stock: (variant: { stock: number }, _: unknown, context: ResolverContext) => isStaff(context) ? variant.stock : Math.min(variant.stock, PUBLIC_STOCK_CAP),
+    reorderPoint: (variant: { reorderPoint?: number | null }, _: unknown, context: ResolverContext) => isStaff(context) ? variant.reorderPoint ?? null : null,
     sizeValue: (variant: { size: { value: number } }) => variant.size.value,
     sizeUnit: (variant: { size: { unit: string } }) => variant.size.unit,
     // Version plana de images: atravesar variants { images { url } } pasa del
@@ -218,12 +232,14 @@ const baseResolvers = {
       return { catalog, accounts, orders };
     }),
     catalogBrands: () => productService.catalogBrands(),
+    catalogCategories: () => productService.catalogCategories(),
     checkoutInfo: async () => {
       const settings = await commerceSettingsService.get();
       const { bank } = settings;
       return {
         bank: settings.showBankDetails && bank.name && bank.accountNumber && bank.holder ? { name: bank.name, accountType: bank.accountType, accountNumber: bank.accountNumber, holder: bank.holder } : null,
         notifiesByEmail: mailService.enabled, whatsapp: env.STORE_WHATSAPP ?? null,
+        captchaSiteKey: turnstileEnabled() ? env.TURNSTILE_SITE_KEY : null,
         freeShippingThreshold: settings.freeShippingThreshold, freeShippingMethods: settings.freeShippingMethods, reservationHours: env.ORDER_RESERVATION_HOURS,
         shippingRates: Object.entries(settings.shippingFees).map(([method, fee]) => ({ method, fee })),
         cashOnDelivery: settings.cashOnDelivery,
@@ -293,7 +309,13 @@ const baseResolvers = {
       return { valid: true, issues: [], count: rows.length, created: payloads.length };
     }),
     adjustStock: (_: unknown, args: { input: unknown }, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "inventory.write"); return productService.adjustStock(args.input); }),
-    saveAccount: (_: unknown, args: { id?: string; input: unknown }, context: ResolverContext) => safe(async () => { const actor = authService.requireAdmin(context.user); return authService.saveAccount(actor, args.id, args.input); }),
+    saveAccount: (_: unknown, args: { id?: string; input: unknown }, context: ResolverContext) => safe(async () => {
+      const actor = authService.requireAdmin(context.user);
+      const before = args.id ? await authService.findUser(args.id) : null;
+      const saved = await authService.saveAccount(actor, args.id, args.input);
+      securityAlerts.staffAccess(actor, before, saved);
+      return saved;
+    }),
     editOrderDetails: (_: unknown, args: { id: string; input: unknown }, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "orders.write"); return orderService.editDetails(args.id, args.input); }),
     renameMedia: (_: unknown, args: { id: string; label: string }, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "catalog.write"); return mediaService.rename(args.id, z.string().trim().max(140).parse(args.label)); }),
     deleteMedia: (_: unknown, args: { id: string }, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "catalog.write"); return mediaService.remove(args.id); }),
@@ -312,24 +334,60 @@ const baseResolvers = {
       const orderNumbers = await orderService.linkGuestOrders(user, args.orderNumbers);
       return { linked: orderNumbers.length, orderNumbers };
     }),
-    register: (_: unknown, args: { input: unknown }, context: ResolverContext) => safe(async () => { operationLimiter.consume("register", clientKey(context.ip)); return authService.register(args.input); }),
+    startTwoFactorSetup: (_: unknown, __: unknown, context: ResolverContext) => safe(async () => authService.startTwoFactor(context.user)),
+    confirmTwoFactorSetup: (_: unknown, args: { code: string }, context: ResolverContext) => safe(async () => {
+      operationLimiter.consume("twoFactor", authService.requireUser(context.user).id);
+      return authService.confirmTwoFactor(context.user, z.string().trim().max(20).parse(args.code));
+    }),
+    disableTwoFactor: (_: unknown, args: { code: string }, context: ResolverContext) => safe(async () => {
+      operationLimiter.consume("twoFactor", authService.requireUser(context.user).id);
+      return authService.disableTwoFactor(context.user, z.string().trim().max(20).parse(args.code));
+    }),
+    resetTwoFactor: (_: unknown, args: { id: string }, context: ResolverContext) => safe(async () => {
+      const target = await authService.findUser(idArgs.parse(args).id);
+      const done = await authService.resetTwoFactor(context.user, idArgs.parse(args).id);
+      if (target) securityAlerts.twoFactorReset(context.user!, target);
+      return done;
+    }),
+    register: (_: unknown, args: { input: unknown }, context: ResolverContext) => safe(async () => {
+      operationLimiter.consume("register", clientKey(context.ip));
+      const { captchaToken, ...input } = (args.input ?? {}) as { captchaToken?: string | null };
+      await verifyHuman(captchaToken, context.ip);
+      return authService.register(input);
+    }),
     login: (_: unknown, args: { input: unknown }, context: ResolverContext) => safe(async () => {
-      operationLimiter.consume("login", clientKey(context.ip));
-      // Los fallos se cuentan tambien por cuenta: frena intentos repartidos entre
-      // muchas IP sin bloquear a quien entra bien.
+      const connection = clientKey(context.ip);
+      operationLimiter.consume("login", connection);
+      // Fallos por cuenta y conexión (C60, S03): una conexión que falla mucho queda fuera
+      // para esa cuenta; los fallos repartidos entre muchas conexiones solo cierran la
+      // cuenta a conexiones nuevas, así un tercero no deja fuera a quien ya entró antes.
       const rawEmail = (args.input as { email?: unknown } | null)?.email;
       const account = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase().slice(0, 120) : "";
-      if (account) operationLimiter.assert("loginFailures", account);
+      const pair = `${account}|${connection}`;
+      if (account) {
+        operationLimiter.assert("loginFailuresPair", pair);
+        if (!trustedLogins.has(account, connection)) operationLimiter.assert("loginFailures", account);
+      }
       try {
         const payload = await authService.login(args.input);
-        if (account) operationLimiter.reset("loginFailures", account);
+        if (account) { operationLimiter.reset("loginFailuresPair", pair); trustedLogins.remember(account, connection); }
         return payload;
       } catch (error) {
-        if (account && error instanceof GraphQLError && error.extensions?.code === "UNAUTHENTICATED") operationLimiter.hit("loginFailures", account);
+        if (account && error instanceof GraphQLError && error.extensions?.code === "UNAUTHENTICATED") {
+          operationLimiter.hit("loginFailuresPair", pair);
+          operationLimiter.hit("loginFailures", account);
+          securityAlerts.loginFailed(account, context.ip ?? "");
+        }
         throw error;
       }
     }),
-    createCheckoutOrder: (_: unknown, args: { input: unknown }, context: ResolverContext) => safe(async () => { operationLimiter.consume("checkout", clientKey(context.ip)); return orderService.create(args.input, context.user); }),
+    createCheckoutOrder: (_: unknown, args: { input: unknown }, context: ResolverContext) => safe(async () => {
+      operationLimiter.consume("checkout", clientKey(context.ip));
+      // El token no forma parte de la solicitud (no cambia su huella) y solo se verifica para un pedido
+      // nuevo: un reintento de la misma solicitud devuelve el pedido ya registrado (C70).
+      const { captchaToken, ...input } = (args.input ?? {}) as { captchaToken?: string | null };
+      return orderService.create(input, context.user, { beforeNew: () => verifyHuman(captchaToken, context.ip) });
+    }),
     recordOrderReturn: (_: unknown, args: {id: string; input: unknown}, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "orders.write"); return orderService.recordReturn(args.id, args.input); }),
     recordOrderRefund: (_: unknown, args: {id: string; input: unknown}, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "orders.write"); return orderService.recordRefund(args.id, args.input); }),
     confirmCashOnDeliveryOrder: (_: unknown, rawArgs: unknown, context: ResolverContext) => safe(() => {
@@ -369,10 +427,13 @@ const baseResolvers = {
       const args = userStatusArgs.parse(rawArgs);
       return authService.setUserStatus(actor, args.id, args.status);
     }),
-    updateUserRole: (_: unknown, rawArgs: unknown, context: ResolverContext) => safe(() => {
+    updateUserRole: (_: unknown, rawArgs: unknown, context: ResolverContext) => safe(async () => {
       const actor = authService.requireAdmin(context.user);
       const args = userRoleArgs.parse(rawArgs);
-      return authService.setUserRole(actor, args.id, args.role);
+      const before = await authService.findUser(args.id);
+      const saved = await authService.setUserRole(actor, args.id, args.role);
+      securityAlerts.staffAccess(actor, before, saved);
+      return saved;
     }),
     // Cambiar la cuenta de cobro es sensible: solo Administración, auditado y con aviso al operador.
     // Solo los marca pendientes: el despachador periódico los envía fuera de esta petición.

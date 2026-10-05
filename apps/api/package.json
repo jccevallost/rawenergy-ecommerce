@@ -22,7 +22,7 @@
     "graphql": "^16.11.0",
     "graphql-depth-limit": "^1.1.0",
     "mongoose": "^8.15.1",
-    "nodemailer": "^10.0.1",
+    "nodemailer": "^10.0.14",
     "sharp": "^0.35.4",
     "zod": "^3.25.51"
   },
@@ -32,6 +32,6 @@
     "@types/graphql-depth-limit": "^1.1.6",
     "@types/nodemailer": "^8.0.1",
     "tsx": "^4.19.4",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.11"
   }
 }

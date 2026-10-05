@@ -16,6 +16,10 @@ export const typeDefs = `#graphql
     brand: String!
     slug: String!
     shortDescription: String!
+    # Datos de la etiqueta (C66); vacío o nulo si no se cargaron.
+    ingredients: String
+    usage: String
+    warnings: String
     productType: ProductType!
     nutritionalFacts: NutritionalFacts
     primaryImage: ProductImage
@@ -23,28 +27,33 @@ export const typeDefs = `#graphql
     variants: [ProductVariant!]!
     categories: [TaxonomyRef!]!
     goals: [TaxonomyRef!]!
-    vitalCoinsReward: Int!
-    maxInstallments: Int!
-    hasFreeShipping: Boolean!
-    storeBadges: [String!]!
+    # Retirados en C67: valor fijo para que la tienda y el panel publicados antes no fallen.
+    vitalCoinsReward: Int! @deprecated(reason: "Sin uso en la tienda")
+    maxInstallments: Int! @deprecated(reason: "Sin uso en la tienda")
+    hasFreeShipping: Boolean! @deprecated(reason: "El envío gratis lo deciden las reglas del panel")
+    storeBadges: [String!]! @deprecated(reason: "Sin uso en la tienda")
     featured: Boolean!
     active: Boolean!
   }
   enum ProductStatus { ACTIVE ARCHIVED ALL }
   enum ProductSort { PRICE_ASC PRICE_DESC }
-  input ProductFiltersInput { sort: ProductSort minPrice: Float maxPrice: Float inStock: Boolean featured: Boolean search: String brands: [String!] goals: [String!] flavors: [String!] status: ProductStatus }
+  type CatalogCategory { slug: String! name: String! count: Int! }
+  input ProductFiltersInput { sort: ProductSort minPrice: Float maxPrice: Float inStock: Boolean featured: Boolean search: String brands: [String!] categories: [String!] goals: [String!] flavors: [String!] status: ProductStatus }
   input CursorPaginationInput { first: Int = 12 after: String }
   type ProductEdge { cursor: String! node: Product! }
   type PageInfo { endCursor: String hasNextPage: Boolean! }
   type ProductConnection { edges: [ProductEdge!]! pageInfo: PageInfo! totalCount: Int! }
   input CartItemInput { productId: ID! variantSku: String! quantity: Int! }
-  type CartTotals { subtotal: Float! discount: Float! discountCode: String discountPercent: Int discountMessage: String shippingFee: Float! total: Float! earnedCoins: Int! freeShippingThreshold: Float! amountUntilFreeShipping: Float! hasFreeShipping: Boolean! }
+  type CartTotals { subtotal: Float! discount: Float! discountCode: String discountPercent: Int discountMessage: String shippingFee: Float! total: Float! earnedCoins: Int! @deprecated(reason: "Sin uso en la tienda (C67)") freeShippingThreshold: Float! amountUntilFreeShipping: Float! hasFreeShipping: Boolean! }
   enum UserRole { CUSTOMER CATALOG WAREHOUSE MANAGER ADMIN }
   enum UserStatus { ACTIVE BLOCKED }
-  type User { id: ID! name: String! email: String! role: UserRole! status: UserStatus! createdAt: String lastLoginAt: String }
+  type User { id: ID! name: String! email: String! role: UserRole! status: UserStatus! createdAt: String lastLoginAt: String twoFactorEnabled: Boolean! }
   type AuthPayload { token: String! user: User! }
-  input RegisterInput { name: String! email: String! password: String! }
-  input LoginInput { email: String! password: String! }
+  input RegisterInput { name: String! email: String! password: String! captchaToken: String }
+  # code: segundo factor (C69), solo si la cuenta lo tiene activo.
+  input LoginInput { email: String! password: String! code: String }
+  type TwoFactorSetup { secret: String! otpauthUrl: String! }
+  type TwoFactorRecovery { recoveryCodes: [String!]! }
   enum PaymentMethod { BANK_TRANSFER CASH_ON_DELIVERY }
   enum ShippingMethod { EXPRESS_QUITO_VALLES SERVIENTREGA_NATIONAL }
   enum OrderStatus { PENDING_PAYMENT PAYMENT_REVIEW PAID PREPARING SHIPPED COMPLETED CANCELLED RETURNED }
@@ -76,7 +85,7 @@ export const typeDefs = `#graphql
   }
   input CheckoutCustomerInput { fullName: String! email: String! phone: String! province: String! city: String! address: String! reference: String idType: String idNumber: String }
   input CheckoutItemInput { productId: ID! variantSku: String! quantity: Int! }
-  input CheckoutInput { expectedTotal: Float idempotencyKey: String! customer: CheckoutCustomerInput! items: [CheckoutItemInput!]! shippingMethod: ShippingMethod! paymentMethod: PaymentMethod = BANK_TRANSFER notes: String paymentReference: String discountCode: String }
+  input CheckoutInput { expectedTotal: Float idempotencyKey: String! customer: CheckoutCustomerInput! items: [CheckoutItemInput!]! shippingMethod: ShippingMethod! paymentMethod: PaymentMethod = BANK_TRANSFER notes: String paymentReference: String discountCode: String captchaToken: String }
 
   input OrderFiltersInput { status: OrderStatus search: String }
   type OrderConnection { orders: [Order!]! totalCount: Int! }
@@ -95,13 +104,15 @@ export const typeDefs = `#graphql
   type BankInstructions { name: String! accountType: String! accountNumber: String! holder: String! }
   type CashOnDeliveryRules { enabled: Boolean! expressOnly: Boolean! minimumSubtotal: Float! confirmHours: Int! }
   # bank es null cuando la tienda da los datos de transferencia por WhatsApp.
-  type CheckoutInfo { bank: BankInstructions freeShippingThreshold: Float! freeShippingMethods: [ShippingMethod!]! shippingRates: [ShippingRate!]! notifiesByEmail: Boolean! whatsapp: String reservationHours: Int! cashOnDelivery: CashOnDeliveryRules! welcomeDiscount: WelcomeOffer }
+  type CheckoutInfo { bank: BankInstructions freeShippingThreshold: Float! freeShippingMethods: [ShippingMethod!]! shippingRates: [ShippingRate!]! notifiesByEmail: Boolean! whatsapp: String reservationHours: Int! cashOnDelivery: CashOnDeliveryRules! welcomeDiscount: WelcomeOffer captchaSiteKey: String }
   "Descuento de bienvenida vigente; code es null si la tienda no lo anuncia."
   type WelcomeOffer { percent: Int! minimumSubtotal: Float! endsOn: String code: String }
   type EmailCheck { ok: Boolean! message: String suggestion: String }
   type StoreSettings {
     persistence: String!
     freeShippingThreshold: Float!
+    # Lo pide el panel desde C31 y faltaba en el esquema: la consulta fallaba con 400 (corregido en C62).
+    freeShippingMethods: [ShippingMethod!]!
     shippingRates: [ShippingRate!]!
     paymentMethods: [PaymentMethod!]!
     notifications: NotificationSettings!
@@ -157,6 +168,8 @@ export const typeDefs = `#graphql
     myOrders(limit: Int = 20): [Order!]!
     taxonomy: TaxonomyOverview!
     catalogBrands: [String!]!
+    # Tipos de producto con productos activos (C65).
+    catalogCategories: [CatalogCategory!]!
     checkoutInfo: CheckoutInfo!
     "Formato, errores de tipeo comunes y que el dominio reciba correo."
     checkEmail(email: String!): EmailCheck!
@@ -184,6 +197,11 @@ export const typeDefs = `#graphql
     deleteMedia(id: ID!): Boolean!
     register(input: RegisterInput!): AuthPayload!
     login(input: LoginInput!): AuthPayload!
+    # Segundo factor del personal (C69).
+    startTwoFactorSetup: TwoFactorSetup!
+    confirmTwoFactorSetup(code: String!): TwoFactorRecovery!
+    disableTwoFactor(code: String!): Boolean!
+    resetTwoFactor(id: ID!): Boolean!
     createCheckoutOrder(input: CheckoutInput!): Order!
     linkGuestOrders(orderNumbers: [String!]!): LinkedOrders!
     "Une un producto como presentaciones de otro (C49). input: { sourceId, targetId, flavors?, sourceRevision?, targetRevision? }"

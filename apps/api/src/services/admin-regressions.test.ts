@@ -90,8 +90,8 @@ describe("Regresiones de la revisión del panel",()=>{
     const event=(await auditService.list({search:id,status:"SUCCESS"})).rows.find(row=>row.action==="createCheckoutOrder")!;
     expect(event.after).toMatchObject({id,items:[{variantSku:f.sku,quantity:2}]});
     expect(JSON.stringify(event)).not.toContain(f.checkout.idempotencyKey);
-    const user=await authService.saveAccount(admin,undefined,{name:"Acceso auditado",email:"audit-login@example.test",password:"Audit-login-123",role:"CATALOG",status:"ACTIVE"});
-    expect((await execute('mutation($input:LoginInput!){login(input:$input){user{id}}}',{input:{email:user.email,password:"Audit-login-123"}},null)).errors).toBeUndefined();
+    const user=await authService.saveAccount(admin,undefined,{name:"Acceso auditado",email:"audit-login@example.test",password:"Acceso-auditado-123",role:"CATALOG",status:"ACTIVE"});
+    expect((await execute('mutation($input:LoginInput!){login(input:$input){user{id}}}',{input:{email:user.email,password:"Acceso-auditado-123"}},null)).errors).toBeUndefined();
     expect((await auditService.list({search:user.id,status:"SUCCESS"})).rows.find(row=>row.action==="login")).toMatchObject({actorId:user.id,actorEmail:user.email});
   });
   it("identifica automáticamente inicios sin resultado y vincula cambios masivos a cada producto",async()=>{

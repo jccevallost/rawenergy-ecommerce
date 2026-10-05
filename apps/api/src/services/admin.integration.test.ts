@@ -60,8 +60,8 @@ describe("Contrato administrativo y auditoría", () => {
     }finally{env.ADMIN_APP_URL=priorUrl;enabled.mockRestore();delivery.mockRestore();}
   });
   it("rechaza permisos obsoletos al modificar administradores simultáneamente",async()=>{
-    const first=await authService.saveAccount(admin,undefined,{name:"Administrador A",email:"admin-a@example.com",password:"Secret-admin-A",role:"ADMIN",status:"ACTIVE"});
-    const second=await authService.saveAccount(admin,undefined,{name:"Administrador B",email:"admin-b@example.com",password:"Secret-admin-B",role:"ADMIN",status:"ACTIVE"});
+    const first=await authService.saveAccount(admin,undefined,{name:"Administrador A",email:"admin-a@example.com",password:"Clave-segura-A1",role:"ADMIN",status:"ACTIVE"});
+    const second=await authService.saveAccount(admin,undefined,{name:"Administrador B",email:"admin-b@example.com",password:"Clave-segura-B2",role:"ADMIN",status:"ACTIVE"});
     const results=await Promise.allSettled([authService.setUserRole(first,second.id,"MANAGER"),authService.setUserRole(second,first.id,"MANAGER")]);
     expect(results.filter(r=>r.status==="fulfilled")).toHaveLength(1);
   });

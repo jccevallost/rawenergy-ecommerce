@@ -26,13 +26,14 @@ const category = {
   gainer: { name: "Ganador de peso", slug: "ganador-de-peso" },
   thermo: { name: "Termogénico", slug: "termogenico" }
 };
-const storeBadges = ["Express 4 h en Quito y Valles", "Envío nacional en 24 a 48 horas", "Producto original"];
 const undeclared = (servingSize: string) => ({ servingSize, calories: null, protein: null, carbohydrates: null, fats: null });
 const caffeineWarning = "Alto contenido de cafeína: no apto para menores de 18 años, embarazadas, en lactancia ni personas sensibles a estimulantes. No superes la dosis de la etiqueta.";
 
 type Variant = { flavor: string; size: { value: number; unit: string }; price: number; stock: number; sku: string };
-const product = (data: Omit<ProductPayload, "vitalCoinsReward" | "maxInstallments" | "hasFreeShipping" | "storeBadges" | "productType" | "variants"> & { variants: Variant[] }): ProductPayload => ({
-  ...data, productType: "SUPPLEMENT", vitalCoinsReward: 0, maxInstallments: 1, hasFreeShipping: false, storeBadges,
+// Ingredientes, modo de uso y advertencias (C66) quedan vacíos: se cargan desde la etiqueta real en el panel.
+const product = (data: Omit<ProductPayload, "productType" | "variants" | "ingredients" | "usage" | "warnings"> & { variants: Variant[] }): ProductPayload => ({
+  ingredients: "", usage: "", warnings: "",
+  ...data, productType: "SUPPLEMENT",
   variants: data.variants.map(variant => ({ ...variant, compareAtPrice: null, reorderPoint: 3, images: [] }))
 });
 

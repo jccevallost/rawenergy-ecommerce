@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import mongoose from "mongoose";
 import { z } from "zod";
+import { env } from "../config/env.js";
 import { unitOfWork, operationContext, afterCommit } from "../lib/unitOfWork.js";
 
 const schema = new mongoose.Schema({
@@ -9,9 +10,14 @@ const schema = new mongoose.Schema({
   status: { type: String, enum: ["STARTED", "SUCCESS", "FAILED"], index: true },
   before: mongoose.Schema.Types.Mixed, after: mongoose.Schema.Types.Mixed, input: mongoose.Schema.Types.Mixed,
   relatedEntityIds: { type: [String], index: true },
-  error: String, createdAt: { type: Date, default: Date.now, index: true }
+  error: String, createdAt: { type: Date, default: Date.now, index: true },
+  // Fecha en que MongoDB borra el evento (C60, S15): la bitácora guarda datos personales y
+  // la LOPDP pide un plazo. Campo aparte porque createdAt ya tiene un índice sin caducidad.
+  expiresAt: Date
 }, { strict: true });
 schema.index({ entity: 1, entityId: 1, createdAt: -1 });
+schema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+const retentionMs = () => env.AUDIT_RETENTION_DAYS * 86_400_000;
 export const AuditModel = (mongoose.models.AuditEvent ?? mongoose.model("AuditEvent", schema)) as mongoose.Model<mongoose.InferSchemaType<typeof schema>>;
 export type AuditContext = { user?: { id: string; email: string } | null; requestId?: string; ip?: string };
 export const auditFilters = z.object({
@@ -30,7 +36,7 @@ export function redact(value: unknown): unknown {
   if (typeof value === "object") {
     if ("toHexString" in value) return String(value);
     if ("toObject" in value && typeof value.toObject === "function") return redact(value.toObject());
-    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, /password|token|secret|authorization|credential|resetHash|requestKey|requestFingerprint|idempotencyKey|idNumber/i.test(key) ? "[REDACTED]" : redact(entry)]));
+    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, /password|token|secret|authorization|credential|resetHash|requestKey|requestFingerprint|idempotencyKey|idNumber|otpauth|recoveryCodes|totp|^code$/i.test(key) ? "[REDACTED]" : redact(entry)]));
   }
   return value;
 }
@@ -38,9 +44,15 @@ type Event = { operationId?: string; id: string; requestId: string; actorId: str
 type RunOptions<T> = { transactional?: boolean; snapshot?: (result?: T) => Promise<unknown> };
 class AuditService {
   private memory: Event[] = [];
+  /** Pone fecha de borrado a los eventos anteriores a la conservación (idempotente; al arrancar). */
+  async applyRetention() {
+    if (mongoose.connection.readyState !== 1) return 0;
+    const result = await AuditModel.updateMany({ expiresAt: { $exists: false } }, [{ $set: { expiresAt: { $add: ["$createdAt", retentionMs()] } } }]);
+    return result.modifiedCount;
+  }
   async record(event: Omit<Event, "id" | "createdAt">) {
     const row = { ...event, before: redact(event.before), after: redact(event.after), input: redact(event.input), id: randomUUID(), createdAt: new Date().toISOString() };
-    if (mongoose.connection.readyState === 1) await AuditModel.create(row);
+    if (mongoose.connection.readyState === 1) await AuditModel.create({ ...row, expiresAt: new Date(Date.now() + retentionMs()) });
     else if (operationContext.getStore()) afterCommit(() => { this.memory.unshift(row); });
     else this.memory.unshift(row);
     return row;
@@ -74,7 +86,7 @@ class AuditService {
       result = await work();
     }
     catch (error) {
-      await this.record({ ...base, status: "FAILED", error: error instanceof Error ? error.message.replace(/scrypt:\S+/g, "[REDACTED]").slice(0, 300) : "Error" });
+      await this.record({ ...base, status: "FAILED", error: error instanceof Error ? error.message.replace(/scrypt[:$]\S+/g, "[REDACTED]").slice(0, 300) : "Error" });
       throw error;
     }
     try {

@@ -3,6 +3,7 @@ import { mailService } from "./mail.service.js";
 import { telegramService } from "./telegram.service.js";
 import { orderService } from "./order.service.js";
 import { productService } from "./product.service.js";
+import { MAX_UNITS_PER_LINE } from "../validation/order.js";
 
 /** El listado puede venir de Mongo (_id) o de memoria (id), igual que en el resolver. */
 const idOf = (order: { id?: unknown; _id?: unknown }) => String(order.id ?? order._id);
@@ -109,6 +110,8 @@ describe("OrderService en modo memoria", () => {
   });
 
   it("rechaza la compra cuando no alcanza el inventario y no deja reservas sueltas", async () => {
+    // El tope por línea es MAX_UNITS_PER_LINE (C60): se baja el inventario por debajo de él para pedir una unidad más de las que hay.
+    while (await stockDisponible() >= MAX_UNITS_PER_LINE) await orderService.create({ ...checkout(), items: [{ productId: "demo-2", variantSku: SKU, quantity: MAX_UNITS_PER_LINE }] });
     const disponible = await stockDisponible();
     const whey = await stockDisponible(SKU_WHEY);
     const pedido = {
@@ -177,5 +180,14 @@ describe("OrderService en modo memoria", () => {
     await productService.archive("demo-2");
     await expect(orderService.create(checkout())).rejects.toThrow(/Producto no encontrado/);
     await productService.restore("demo-2");
+  });
+});
+
+describe("Etiqueta de presentación (C63)", () => {
+  it("usa coma decimal y no repite el formato del sabor", async () => {
+    const { presentationLabel } = await import("./order.service.js");
+    expect(presentationLabel("Gourmet Chocolate", { value: 1.6, unit: "lb" })).toBe("Gourmet Chocolate - 1,6 lb");
+    expect(presentationLabel("Cápsulas", { value: 60, unit: "cápsulas" })).toBe("60 cápsulas");
+    expect(presentationLabel("", { value: 300, unit: "g" })).toBe("300 g");
   });
 });

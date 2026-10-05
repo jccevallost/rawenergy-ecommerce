@@ -19,7 +19,11 @@ const allowedTypes: Record<string, string> = {
 
 export const MAX_MEDIA_BYTES = 5 * 1024 * 1024;
 
-type StoredMedia = { contentType: string; size: number; data: Buffer; thumbnail?: Buffer; width?: number; height?: number; label?: string; createdAt?: string };
+/** Error de la foto que se puede mostrar tal cual; los de la librería de imágenes no (C60, S20). */
+export class MediaInputError extends Error {}
+
+export type MediaSize = "full" | "medium" | "thumb";
+type StoredMedia = { contentType: string; size: number; data: Buffer; thumbnail?: Buffer; medium?: Buffer; width?: number; height?: number; label?: string; createdAt?: string };
 
 class MediaService {
   private memory = new Map<string, StoredMedia>();
@@ -41,13 +45,13 @@ class MediaService {
    * de 16 MB de MongoDB y cada consulta del catalogo arrastraba esos bytes.
    */
   async save(data: Buffer, contentType: string) {
-    if (!this.isAllowed(contentType)) throw new Error(`Formato no permitido: ${contentType}`);
-    if (!data.length) throw new Error("El archivo esta vacio");
-    if (data.length > MAX_MEDIA_BYTES) throw new Error(`El archivo supera ${Math.round(MAX_MEDIA_BYTES / 1024 / 1024)} MB`);
+    if (!this.isAllowed(contentType)) throw new MediaInputError(`Formato no permitido: ${contentType}`);
+    if (!data.length) throw new MediaInputError("El archivo está vacío");
+    if (data.length > MAX_MEDIA_BYTES) throw new MediaInputError(`El archivo supera ${Math.round(MAX_MEDIA_BYTES / 1024 / 1024)} MB`);
 
     const decoder = sharp(data, { limitInputPixels: 40_000_000, failOn: "warning" });
     const metadata = await decoder.metadata();
-    if (!["jpeg", "png", "webp", "avif", "heif", "gif", "tiff"].includes(metadata.format ?? "")) throw new Error("El contenido no es una imagen compatible");
+    if (!["jpeg", "png", "webp", "avif", "heif", "gif", "tiff"].includes(metadata.format ?? "")) throw new MediaInputError("El contenido no es una imagen compatible");
     const optimized = await decoder.rotate().resize({ width: 1400, height: 1400, fit: "inside", withoutEnlargement: true }).webp({ quality: 82 }).toBuffer({ resolveWithObject: true });
     data = optimized.data;
     contentType = "image/webp";
@@ -98,15 +102,34 @@ class MediaService {
     return this.memory.delete(id);
   }
 
-  async get(id: string, thumb = false): Promise<StoredMedia | null> {
+  /** 720 px para pantallas de alta densidad (C64). Si la foto es más chica, la misma foto. */
+  private async medium(full: Buffer) {
+    const meta = await sharp(full).metadata();
+    if ((meta.width ?? 0) <= 720 && (meta.height ?? 0) <= 720) return full;
+    return sharp(full).resize({ width: 720, height: 720, fit: "inside", withoutEnlargement: true }).webp({ quality: 80 }).toBuffer();
+  }
+
+  async get(id: string, size: MediaSize = "full"): Promise<StoredMedia | null> {
     if (!/^[a-f0-9]{32}$/.test(id)) return null;
     if (this.useMongo) {
+      // Solo el binario pedido (antes se leía el documento entero para servir la miniatura).
       // Sin lean(): asi mongoose devuelve el binario ya como Buffer de Node.
-      const found = await MediaModel.findById(id);
-      return found ? { contentType: found.contentType, size: found.size, data: Buffer.from(thumb && found.thumbnail ? found.thumbnail : found.data) } : null;
+      const fields = size === "thumb" ? "contentType size thumbnail data" : size === "medium" ? "contentType size medium" : "contentType size data";
+      const found = await MediaModel.findById(id).select(fields);
+      if (!found) return null;
+      if (size === "medium" && !found.medium) {
+        const full = await MediaModel.findById(id).select("data");
+        const medium = await this.medium(Buffer.from(full!.data));
+        await MediaModel.updateOne({ _id: id }, { $set: { medium } });
+        return { contentType: found.contentType, size: found.size, data: medium };
+      }
+      const data = size === "thumb" ? found.thumbnail ?? found.data : size === "medium" ? found.medium! : found.data;
+      return { contentType: found.contentType, size: found.size, data: Buffer.from(data) };
     }
     const record = this.memory.get(id);
-    return record ? {...record, data: thumb && record.thumbnail ? record.thumbnail : record.data} : null;
+    if (!record) return null;
+    if (size === "medium" && !record.medium) record.medium = await this.medium(record.data);
+    return { ...record, data: size === "thumb" ? record.thumbnail ?? record.data : size === "medium" ? record.medium! : record.data };
   }
 }
 

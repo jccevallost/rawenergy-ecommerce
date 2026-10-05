@@ -17,3 +17,7 @@ exports/
 .git-pos-anterior/
 # Configuración local del editor
 .vscode/
+
+# Documentación interna (auditorías, evidencias, guías): solo en este equipo. El
+# repositorio es público y la auditoría de seguridad describe debilidades (C71).
+docs/

@@ -12,7 +12,13 @@ const userSchema = new Schema({
   resetHash: String, resetExpiresAt: Date, resetRequestedAt: Date,
   accessRevision: { type: Number, default: 0 },
   sessionVersion: { type: Number, default: 0 },
-  lastLoginAt: Date
+  lastLoginAt: Date,
+  // Segundo factor (C69): secreto cifrado, alta pendiente, último paso usado y códigos de recuperación (hash).
+  totpEnabled: { type: Boolean, default: false },
+  totpSecret: String,
+  totpPending: String,
+  totpLastStep: { type: Number, default: -1 },
+  totpRecovery: { type: [String], default: [] }
 }, { timestamps: true, optimisticConcurrency: true });
 
 export type UserDocument = InferSchemaType<typeof userSchema>;

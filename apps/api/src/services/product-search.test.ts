@@ -38,3 +38,15 @@ describe("Búsqueda por palabras, sabor y tamaño (C47)", () => {
     expect(await titles("whey 7 lb")).toEqual([]);
   });
 });
+
+describe("Tipo de producto (C65)", () => {
+  it("lista los tipos con productos activos y filtra por ellos", async () => {
+    const types = await productService.catalogCategories();
+    expect(types.length).toBeGreaterThan(0);
+    const creatine = types.find(type => /creatina/i.test(type.name))!;
+    expect(creatine.count).toBeGreaterThan(0);
+    const result = await productService.search({ categories: [creatine.slug] }, { first: 100 });
+    expect(result.totalCount).toBe(creatine.count);
+    expect(result.edges.every(edge => (edge.node as { categories: Array<{ slug: string }> }).categories.some(category => category.slug === creatine.slug))).toBe(true);
+  });
+});
