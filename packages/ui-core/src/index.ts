@@ -23,5 +23,4 @@ export const brand = {
 export const formatMoney = (value: number, currency = "USD") =>
   new Intl.NumberFormat("es-EC", { style: "currency", currency }).format(value);
 
-export const calculateInstallment = (price: number, installments: number) =>
-  installments > 0 ? price / installments : price;
+// calculateInstallment (cuotas) se retiró en C67: la tienda no ofrece pago en cuotas.

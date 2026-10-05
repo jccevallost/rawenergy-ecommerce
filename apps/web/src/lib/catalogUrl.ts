@@ -20,12 +20,14 @@ export function filtersFromSearch(search: URLSearchParams): ProductFilters {
   const text = (search.get("q") ?? "").trim().slice(0, 80);
   const brands = list(search, "marca");
   const goals = list(search, "uso", /^[a-z0-9-]+$/);
+  const categories = list(search, "tipo", /^[a-z0-9-]+$/);
   const sort = SORT_PARAMS[search.get("orden") as SortParam];
   const minPrice = price(search, "min");
   const maxPrice = price(search, "max");
   return {
     ...(text ? { search: text } : {}),
     ...(brands.length ? { brands } : {}),
+    ...(categories.length ? { categories } : {}),
     ...(goals.length ? { goals } : {}),
     ...(search.get("disponible") === "1" ? { inStock: true } : {}),
     ...(minPrice !== undefined ? { minPrice } : {}),
@@ -38,6 +40,7 @@ export function catalogHref(filters: ProductFilters = {}) {
   const search = new URLSearchParams();
   if (filters.search?.trim()) search.set("q", filters.search.trim());
   filters.brands?.forEach(brand => search.append("marca", brand));
+  filters.categories?.forEach(category => search.append("tipo", category));
   filters.goals?.forEach(goal => search.append("uso", goal));
   if (filters.inStock) search.set("disponible", "1");
   if (filters.minPrice !== undefined) search.set("min", String(filters.minPrice));
@@ -52,5 +55,5 @@ export const productHref = (slug: string) => `/producto/${encodeURIComponent(slu
 export const campaignHref = (slug: string) => `/campana/${encodeURIComponent(slug)}`;
 
 export const activeFilterCount = (filters: ProductFilters) =>
-  (filters.brands?.length ?? 0) + (filters.goals?.length ?? 0) + Number(!!filters.inStock)
+  (filters.brands?.length ?? 0) + (filters.categories?.length ?? 0) + (filters.goals?.length ?? 0) + Number(!!filters.inStock)
   + Number(filters.minPrice !== undefined || filters.maxPrice !== undefined) + Number(!!filters.search);

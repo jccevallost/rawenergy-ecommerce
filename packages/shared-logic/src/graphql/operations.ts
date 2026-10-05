@@ -8,7 +8,6 @@ export const PRODUCT_FIELDS = gql`
     nutritionalFacts { servingSize calories protein carbohydrates fats }
     categories { name slug }
     goals { name slug }
-    vitalCoinsReward maxInstallments hasFreeShipping storeBadges
     variants {
       id flavor sizeValue sizeUnit price compareAtPrice stock reorderPoint sku imageUrls imageAlts
     }
@@ -40,7 +39,7 @@ export const GET_PRODUCTS_BY_GOAL = gql`
 export const PRODUCT_BY_SLUG = gql`
   ${PRODUCT_FIELDS}
   query ProductBySlug($slug: String!) {
-    productBySlug(slug: $slug) { ...ProductFields }
+    productBySlug(slug: $slug) { ...ProductFields ingredients usage warnings }
   }
 `;
 
@@ -104,7 +103,7 @@ export const GET_ADMIN_PRODUCTS = gql`
   ${PRODUCT_FIELDS}
   query GetAdminProducts($filters: ProductFiltersInput, $pagination: CursorPaginationInput) {
     searchProducts(filters: $filters, pagination: $pagination) {
-      edges { cursor node { ...ProductFields } }
+      edges { cursor node { ...ProductFields ingredients usage warnings } }
       pageInfo { endCursor hasNextPage }
       totalCount
     }
@@ -114,7 +113,7 @@ export const GET_ADMIN_PRODUCTS = gql`
 export const CALCULATE_CART_TOTALS = gql`
   query CalculateCartTotals($cartItems: [CartItemInput!]!, $shippingMethod: ShippingMethod, $discountCode: String) {
     calculateCartTotals(cartItems: $cartItems, shippingMethod: $shippingMethod, discountCode: $discountCode) {
-      subtotal discount discountCode discountPercent discountMessage shippingFee total earnedCoins freeShippingThreshold amountUntilFreeShipping hasFreeShipping
+      subtotal discount discountCode discountPercent discountMessage shippingFee total freeShippingThreshold amountUntilFreeShipping hasFreeShipping
     }
   }
 `;
@@ -165,7 +164,7 @@ export const ADMIN_STATS = gql`
 
 export const CHECKOUT_INFO = gql`
   query CheckoutInfo {
-    checkoutInfo { bank { name accountType accountNumber holder } notifiesByEmail whatsapp reservationHours freeShippingThreshold freeShippingMethods shippingRates { method fee } cashOnDelivery { enabled expressOnly minimumSubtotal confirmHours } welcomeDiscount { percent minimumSubtotal endsOn code } }
+    checkoutInfo { bank { name accountType accountNumber holder } notifiesByEmail whatsapp captchaSiteKey reservationHours freeShippingThreshold freeShippingMethods shippingRates { method fee } cashOnDelivery { enabled expressOnly minimumSubtotal confirmHours } welcomeDiscount { percent minimumSubtotal endsOn code } }
   }
 `;
 
@@ -266,12 +265,19 @@ export const REGISTER = gql`
 
 export const ME = gql`
   query Me {
-    me { id name email role status createdAt lastLoginAt }
+    me { id name email role status createdAt lastLoginAt twoFactorEnabled }
   }
 `;
 
 export const USERS = gql`
   query Users($role: UserRole) {
     users(role: $role) { id name email role status createdAt lastLoginAt }
+  }
+`;
+
+// Tipos de producto con productos activos y su cantidad (C65): filtros, portada y sugerencias.
+export const CATALOG_CATEGORIES = gql`
+  query CatalogCategories {
+    catalogCategories { slug name count }
   }
 `;

@@ -1,14 +1,16 @@
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@apollo/client";
-import { LogOut, Menu, Search, ShoppingBag, UserRound } from "lucide-react";
+import { LogOut, Menu, ShoppingBag, UserRound } from "lucide-react";
 import { type AuthUser, CHECKOUT_INFO, type CheckoutInfo, useCartOrchestrator } from "@vital-forge/shared-logic";
 import { formatMoney } from "@vital-forge/ui-core";
 import { AssetImage } from "./AssetImage";
+import { SearchBox } from "./SearchBox";
 import { siteLogoCandidates } from "../lib/assetCatalog";
 import { catalogHref, filtersFromSearch } from "../lib/catalogUrl";
 import { goals } from "../lib/goals";
-import { Link, navigate, useRoute } from "../lib/router";
+import { Link, useRoute } from "../lib/router";
 import { freeShippingText } from "../lib/commerceText";
+import { EXPRESS_PROMISE_SHORT } from "../lib/storePromises";
 
 export function SiteLogo() {
   return (
@@ -26,18 +28,15 @@ const shopLinks = [
   { to: "/#envios", label: "Envíos y pagos" }
 ];
 
-type HeaderProps = { user: AuthUser | null; adminUrl: string; menuOpen: boolean; onMenu: () => void; onLogin: () => void; onOrders: () => void; onLogout: () => void };
+type HeaderProps = { user: AuthUser | null; menuOpen: boolean; onMenu: () => void; onLogin: () => void; onOrders: () => void; onLogout: () => void };
 
-export function Header({ user, adminUrl, menuOpen, onMenu, onLogin, onOrders, onLogout }: HeaderProps) {
+export function Header({ user, menuOpen, onMenu, onLogin, onOrders, onLogout }: HeaderProps) {
   const { route, href } = useRoute();
   const { itemCount, toggleCart } = useCartOrchestrator();
   const { data } = useQuery<{ checkoutInfo: CheckoutInfo }>(CHECKOUT_INFO);
   const freeShipping = data ? freeShippingText(data.checkoutInfo, true) : null;
   const welcome = data?.checkoutInfo.welcomeDiscount;
   const currentQuery = route.name === "catalog" ? filtersFromSearch(route.search).search ?? "" : "";
-  const [query, setQuery] = useState(currentQuery);
-
-  useEffect(() => setQuery(currentQuery), [currentQuery]);
 
   // Móvil y tableta (C54): la cabecera se oculta al bajar y vuelve al subir. Nunca se
   // oculta cerca del inicio ni con el foco dentro (búsqueda, menú, carrito).
@@ -61,11 +60,6 @@ export function Header({ user, adminUrl, menuOpen, onMenu, onLogin, onOrders, on
   }, []);
   useEffect(() => setHidden(false), [href]);
 
-  const search = (event: FormEvent) => {
-    event.preventDefault();
-    const text = query.trim();
-    navigate(catalogHref(text ? { search: text } : {}));
-  };
 
   return (
     <header className={`site-header ${hidden ? "is-hidden" : ""}`} ref={headerRef} onFocusCapture={() => setHidden(false)}>
@@ -73,8 +67,10 @@ export function Header({ user, adminUrl, menuOpen, onMenu, onLogin, onOrders, on
       <a className="skip-link" href="#buscar">Ir a la búsqueda</a>
       <p className="promo-strip">
         {welcome?.code && <span>{welcome.percent} % en tu primera compra: <b>{welcome.code}</b></span>}
-        <span>{freeShipping ?? "Envío calculado antes de confirmar"}</span>
-        <span>Express 4 h en Quito y Valles</span>
+        {/* Una sola mención del express (C63): con envío gratis solo en express, ambas cosas van juntas. */}
+        {data?.checkoutInfo.freeShippingMethods.length === 1 && data.checkoutInfo.freeShippingMethods[0] === "EXPRESS_QUITO_VALLES"
+          ? <span>{EXPRESS_PROMISE_SHORT}, gratis desde {formatMoney(data.checkoutInfo.freeShippingThreshold)}</span>
+          : <><span>{freeShipping ?? "Envío calculado antes de confirmar"}</span><span>{EXPRESS_PROMISE_SHORT}</span></>}
         <span>Compra sin crear cuenta</span>
       </p>
       <div className="header-bar container">
@@ -83,11 +79,7 @@ export function Header({ user, adminUrl, menuOpen, onMenu, onLogin, onOrders, on
           <Menu size={22} />
         </button>
         <SiteLogo />
-        <form className="header-search" role="search" onSubmit={search}>
-          <label className="sr-only" htmlFor="buscar">Buscar productos</label>
-          <input id="buscar" type="search" enterKeyHint="search" autoComplete="off" maxLength={80} placeholder="Busca proteína, creatina o una marca" value={query} onChange={event => setQuery(event.target.value)} />
-          <button type="submit" className="header-search-submit" aria-label="Buscar"><Search size={20} /></button>
-        </form>
+        <SearchBox initial={currentQuery} />
         <div className="header-actions">
           {user ? (
             <>
@@ -95,7 +87,6 @@ export function Header({ user, adminUrl, menuOpen, onMenu, onLogin, onOrders, on
                 <UserRound size={22} aria-hidden="true" />
                 <span className="header-action-text"><small>Hola, {user.name.split(" ")[0]}</small>Mis pedidos</span>
               </button>
-              {user.role === "ADMIN" && <a className="header-action header-action-text-only header-desktop-only" href={adminUrl}>Panel</a>}
               <button type="button" className="icon-btn icon-btn-dark header-desktop-only" onClick={onLogout} aria-label="Cerrar sesión" title="Cerrar sesión"><LogOut size={20} /></button>
             </>
           ) : (

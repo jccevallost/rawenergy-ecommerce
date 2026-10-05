@@ -41,6 +41,10 @@ export type Product = {
   brand: string;
   slug: string;
   shortDescription: string;
+  /** Datos de la etiqueta (C66): solo en la ficha y en el panel. */
+  ingredients?: string | null;
+  usage?: string | null;
+  warnings?: string | null;
   productType: "SUPPLEMENT" | "APPAREL";
   nutritionalFacts?: NutritionalFacts | null;
   primaryImage?: ProductImage | null;
@@ -48,10 +52,6 @@ export type Product = {
   variants: ProductVariant[];
   categories: TaxonomyRef[];
   goals: TaxonomyRef[];
-  vitalCoinsReward: number;
-  maxInstallments: number;
-  hasFreeShipping: boolean;
-  storeBadges?: string[];
   featured?: boolean;
   active: boolean;
 };
@@ -117,10 +117,14 @@ export type ProductFilters = {
   featured?: boolean;
   search?: string;
   brands?: string[];
+  /** Tipo de producto (slug de categoría), C65. */
+  categories?: string[];
   goals?: string[];
   flavors?: string[];
   status?: ProductStatus;
 };
+
+export type CatalogCategory = { slug: string; name: string; count: number };
 
 export type PageInfo = { endCursor?: string | null; hasNextPage: boolean };
 export type ProductConnection = {
@@ -137,7 +141,6 @@ export type CartItem = {
   image?: string;
   unitPrice: number;
   quantity: number;
-  vitalCoinsReward: number;
   /** Existencias conocidas al agregar. Solo limita la interfaz; el servidor decide. */
   maxQuantity?: number;
 };
@@ -152,7 +155,6 @@ export type CartTotals = {
   discountMessage?: string | null;
   shippingFee: number;
   total: number;
-  earnedCoins: number;
   freeShippingThreshold: number;
   amountUntilFreeShipping: number;
   hasFreeShipping: boolean;
@@ -232,6 +234,8 @@ export type AuthUser = {
   status: UserStatus;
   createdAt?: string | null;
   lastLoginAt?: string | null;
+  /** Verificación en dos pasos activa (C69, solo personal). */
+  twoFactorEnabled?: boolean;
 };
 export type AuthPayload = { token: string; user: AuthUser };
 
@@ -265,6 +269,8 @@ export type TaxonomyOverview = {
 };
 
 export type CheckoutInfo = {
+  /** Clave pública de Cloudflare Turnstile si la API exige comprobar que es una persona (C70). */
+  captchaSiteKey?: string | null;
   /** null cuando la tienda da los datos de transferencia por WhatsApp. */
   bank?: { name: string; accountType: string; accountNumber: string; holder: string } | null;
   freeShippingThreshold: number;

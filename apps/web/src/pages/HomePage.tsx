@@ -1,7 +1,7 @@
 import { type KeyboardEvent, useMemo, useRef, useState } from "react";
 import { useQuery } from "@apollo/client";
 import { ArrowRight, ClipboardCheck, Landmark, ShoppingCart } from "lucide-react";
-import { ACTIVE_CAMPAIGNS, type Campaign, CHECKOUT_INFO, type CheckoutInfo, type Product, useProductsByGoal, useProductSearch } from "@vital-forge/shared-logic";
+import { ACTIVE_CAMPAIGNS, CATALOG_CATEGORIES, type Campaign, type CatalogCategory, CHECKOUT_INFO, type CheckoutInfo, type Product, useProductsByGoal, useProductSearch } from "@vital-forge/shared-logic";
 import { formatMoney } from "@vital-forge/ui-core";
 import { AssetImage } from "../components/AssetImage";
 import { HeroCarousel, HeroSkeleton, type HeroSlide } from "../components/HeroCarousel";
@@ -13,7 +13,7 @@ import { goals } from "../lib/goals";
 import { readRecent } from "../lib/recentlyViewed";
 import { Link, usePageEntry } from "../lib/router";
 import { storePromises } from "../lib/storePromises";
-import { freeShippingText } from "../lib/commerceText";
+import { cashOnDeliveryConditions, freeShippingText } from "../lib/commerceText";
 
 // Mensajes generales cuando no hay campañas activas (o no cargan): nunca queda vacía la portada.
 const fallbackSlides = [
@@ -112,6 +112,14 @@ function RecentlyViewed() {
   );
 }
 
+/** Paso de pago según las reglas del panel (C63): antes decía «Te mostramos los datos bancarios» aunque se dan por WhatsApp. */
+function payStep(info?: CheckoutInfo) {
+  if (!info) return "Antes de confirmar ves cómo pagar: transferencia o, en Quito y Valles, contra entrega.";
+  const transfer = info.bank ? "Al confirmar ves los datos para transferir y envías el comprobante." : info.whatsapp ? "Al confirmar sigues por WhatsApp: ahí recibes los datos para transferir." : "Al confirmar te contactamos con los datos para transferir.";
+  const cod = info.cashOnDelivery.enabled ? ` También puedes pagar al recibir (${cashOnDeliveryConditions(info)}).` : "";
+  return `${transfer} Despachamos cuando validamos la transferencia.${cod}`;
+}
+
 function HowToBuy() {
   const { data } = useQuery<{ checkoutInfo: CheckoutInfo }>(CHECKOUT_INFO);
   const info = data?.checkoutInfo;
@@ -121,7 +129,7 @@ function HowToBuy() {
   const steps = [
     { icon: ShoppingCart, title: "Elige y agrega", text: "Selecciona sabor y tamaño. No necesitas crear una cuenta." },
     { icon: ClipboardCheck, title: "Registra tu pedido", text: "Escribe tus datos de entrega. Verás el envío y el total antes de confirmar." },
-    { icon: Landmark, title: "Transfiere y recibe", text: "Te mostramos los datos bancarios. Despachamos cuando validamos el pago." }
+    { icon: Landmark, title: "Paga y recibe", text: payStep(info) }
   ];
   return (
     <section className="how container" id="envios" aria-labelledby="how-title">
@@ -157,11 +165,17 @@ export function HomePage() {
   const available = useProductSearch({ inStock: true }, 12);
   const featured = useProductSearch({ featured: true, inStock: true }, 12);
   const campaigns = useQuery<{ activeCampaigns: Campaign[] }>(ACTIVE_CAMPAIGNS, { variables: { limit: 8 } });
+  // Tipos de producto (C65, V16): «Creatina», «Preentreno»… junto a los objetivos.
+  const types = useQuery<{ catalogCategories: CatalogCategory[] }>(CATALOG_CATEGORIES);
   const live = (campaigns.data?.activeCampaigns ?? []).filter(campaign => campaign.products.length > 0);
   const slides = live.length ? varied(live.slice(0, 5).map(campaignSlide)) : fallbackHero(available.products);
   const spotlight = live[0];
   const useFeatured = featured.loading || featured.products.length > 0;
   const rail = useFeatured ? featured : available;
+  // El carril de la campaña solo muestra lo que no está ya en el carril anterior (C65, V18):
+  // con pocos productos con foto, la portada repetía los mismos tres hasta cuatro veces.
+  const railIds = new Set(rail.products.map(product => product.id));
+  const spotlightProducts = (spotlight?.products ?? []).filter(product => !railIds.has(product.id));
   return (
     <>
       <h1 className="sr-only" ref={heading} tabIndex={-1}>RawEnergy EC, tienda de suplementos deportivos</h1>
@@ -175,6 +189,11 @@ export function HomePage() {
           </Link>
         ))}
       </nav>
+      {!!types.data?.catalogCategories.length && (
+        <nav className="container type-chips" aria-label="Comprar por tipo de producto">
+          {types.data.catalogCategories.map(category => <Link key={category.slug} to={catalogHref({ categories: [category.slug] })} className="chip">{category.name} <small>({category.count})</small></Link>)}
+        </nav>
+      )}
       <ProductRail
         title={useFeatured ? "Destacados de la tienda" : "Disponibles ahora"}
         subtitle={useFeatured ? "Selección de la tienda con existencias." : "Productos con existencias para comprar hoy."}
@@ -182,7 +201,7 @@ export function HomePage() {
         loading={rail.loading && !rail.products.length}
         error={rail.error && <>{friendlyError(rail.error, "No pudimos cargar los productos.")} <button type="button" className="btn btn-link" onClick={() => void rail.refetch()}>Reintentar</button></>}
         viewAll={{ to: catalogHref({ inStock: true }), label: "Ver todo lo disponible" }} />
-      {spotlight && <ProductRail title={spotlight.title} subtitle={spotlight.eyebrow} products={spotlight.products} viewAll={{ to: campaignHref(spotlight.slug), label: spotlight.ctaLabel }} />}
+      {spotlightProducts.length >= 2 && <ProductRail title={spotlight!.title} subtitle={spotlight!.eyebrow} products={spotlightProducts} viewAll={{ to: campaignHref(spotlight!.slug), label: spotlight!.ctaLabel }} />}
       <BecauseYouViewed />
       <GoalTabs />
       <RecentlyViewed />

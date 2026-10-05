@@ -6,17 +6,22 @@ La carpeta se lee al arrancar el servidor de desarrollo y al compilar, y solo se
 
 Las fotos de producto cargadas desde el panel no van aqui: se suben al servidor y quedan en la base de datos.
 
+## Formato de imagen (C64)
+- **Logos e iconos: SVG** (vectorial, pocos KB, nítido en cualquier pantalla). Si solo hay mapa de bits, **WebP con transparencia** al doble del tamaño en que se muestra. No usar PNG grandes: en la portada móvil los logos PNG pesaban 526 KB de 713 KB; en WebP pesan 71 KB.
+- **Fotos de producto: WebP** (la API las convierte sola al subirlas desde el panel). Subir originales de al menos 1.200 × 1.200 px, cuadrados, con fondo claro uniforme y el envase centrado. Nunca SVG para fotos.
+
 ## Logo principal
 - Colocar en `store/`.
-- Nombre esperado: `logo` (ej. `logo.png`).
+- Nombre esperado: `logo` (ej. `logo.svg` o `logo.webp`).
 - Respaldo aceptado: `rawenergy-logo`.
-- Formatos, en orden de prioridad: `.png`, `.svg`, `.webp`.
-- Recomendacion: exportar sin fondo, recortado al borde real del logo.
+- Formatos, en orden de prioridad: `.svg`, `.webp`, `.png`.
+- Recomendacion: exportar sin fondo, recortado al borde real del logo. Hoy hay `logo.webp` (320 px, 14 KB) y el `logo.png` original como respaldo.
 
 ## Logos de marcas
 - Colocar en `brands/`.
-- Nombres esperados (uno por marca): `dragon-pharma`, `raw-nutrition`, `evogen`, `muscletech`, `nutrex`, `optimum-nutrition`, `gold-standard`, `kevin-levrone`, `dymatize`.
-- Formatos, en orden de prioridad: `.png`, `.svg`, `.webp`.
+- Nombres esperados (uno por marca): `dragon-pharma`, `raw-nutrition`, `evogen`, `muscletech`, `nutrex`, `optimum-nutrition`, `gold-standard`, `kevin-levrone`, `dymatize`, `insane-labz`.
+- Formatos, en orden de prioridad: `.svg`, `.webp`, `.png`. Cada marca tiene hoy su `.webp` (hasta 460 px) y el `.png` original como respaldo.
+- Pendiente del propietario: logo de Gold Standard y un logo de Raw Nutrition sin el fondo de cemento.
 
 ## Fotos de producto
 - Colocar en `products/`.

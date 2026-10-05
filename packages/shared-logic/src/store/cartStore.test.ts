@@ -3,13 +3,13 @@ import { calculateLocalCartTotals, useCartStore } from "./cartStore";
 
 describe("calculateLocalCartTotals", () => {
   it("calcula subtotal, monedas y faltante de envío gratis", () => {
-    const totals = calculateLocalCartTotals([{ productId: "1", variantSku: "P-1", title: "Protein", variantLabel: "Chocolate", unitPrice: 30, quantity: 2, vitalCoinsReward: 3 }], 75);
-    expect(totals).toMatchObject({ subtotal: 60, earnedCoins: 6, amountUntilFreeShipping: 15, hasFreeShipping: false });
+    const totals = calculateLocalCartTotals([{ productId: "1", variantSku: "P-1", title: "Protein", variantLabel: "Chocolate", unitPrice: 30, quantity: 2 }], 75);
+    expect(totals).toMatchObject({ subtotal: 60, amountUntilFreeShipping: 15, hasFreeShipping: false });
   });
 });
 
 describe("apertura del carrito", () => {
-  const item = { productId: "1", variantSku: "P-1", title: "Protein", variantLabel: "Chocolate", unitPrice: 30, quantity: 1, vitalCoinsReward: 0 };
+  const item = { productId: "1", variantSku: "P-1", title: "Protein", variantLabel: "Chocolate", unitPrice: 30, quantity: 1 };
   it("agregar abre el cajón por defecto y puede agregar sin interrumpir la navegación", () => {
     useCartStore.setState({ items: [], isOpen: false, view: "cart", notice: "" });
     useCartStore.getState().addItem(item, { open: false });
@@ -27,7 +27,7 @@ describe("apertura del carrito", () => {
 });
 
 describe("tope por existencias conocidas", () => {
-  const item = { productId: "2", variantSku: "P-2", title: "Creatina", variantLabel: "300 g", unitPrice: 20, quantity: 1, vitalCoinsReward: 0, maxQuantity: 3 };
+  const item = { productId: "2", variantSku: "P-2", title: "Creatina", variantLabel: "300 g", unitPrice: 20, quantity: 1, maxQuantity: 3 };
   it("no supera las unidades disponibles al agregar ni al cambiar la cantidad", () => {
     useCartStore.setState({ items: [], isOpen: false, view: "cart", notice: "" });
     for (let i = 0; i < 5; i++) useCartStore.getState().addItem(item, { open: false });

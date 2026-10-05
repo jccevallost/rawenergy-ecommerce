@@ -4,6 +4,7 @@ import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } fro
 import { checkoutAttempt, findCheckoutAttempt, lineCap, CALCULATE_CART_TOTALS, CHECK_EMAIL, CHECKOUT_INFO, CREATE_CHECKOUT_ORDER, type CartTotals, type CheckoutInfo, type Order, useCartOrchestrator } from "@vital-forge/shared-logic";
 import { formatMoney } from "@vital-forge/ui-core";
 import { ShippingProgress } from "./ShippingProgress";
+import { Turnstile } from "./Turnstile";
 import { catalogHref } from "../lib/catalogUrl";
 import { friendlyError } from "../lib/errors";
 import { cartSignature, recentSameOrder, rememberLastOrder } from "../lib/lastOrder";
@@ -32,10 +33,17 @@ type CheckoutForm = {
 };
 
 // Por qué se pide cada dato obligatorio cuando el cliente lo deja vacío.
+// La validación es solo de la tienda (C57): el formulario lleva noValidate para que el navegador
+// no muestre su burbuja encima de estos mensajes. Orden = orden visual, para enfocar el primer error.
 const missingMessages: Record<string, string> = {
+  fullName: "Escribe tu nombre completo para la entrega y la factura.",
   phone: "Escribe tu celular de 10 dígitos que empieza con 09; por ahí coordinamos tu pedido.",
-  city: "Elige tu ciudad."
+  email: "Escribe tu correo, por ejemplo nombre@gmail.com.",
+  province: "Elige tu provincia.",
+  city: "Elige tu ciudad.",
+  address: "Escribe la dirección exacta: calle principal, número y calle secundaria."
 };
+const fieldOrder = ["idNumber", "fullName", "phone", "email", "province", "city", "address"] as const;
 
 const initialCheckout: CheckoutForm = {
   fullName: "",
@@ -76,6 +84,10 @@ export function CartDrawer() {
   const itemsSignature = cartSignature(items);
   useEffect(() => { setRepeatOf(null); repeatConfirmed.current = false; }, [itemsSignature]);
   const [createOrder, createState] = useMutation<{ createCheckoutOrder: Order }>(CREATE_CHECKOUT_ORDER);
+  // Comprobación de persona (C70): solo si la API publica la clave de Turnstile. El token sirve una vez.
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
+  const [captchaUnavailable, setCaptchaUnavailable] = useState(false);
   // Que se le promete al cliente al terminar depende de si la tienda tiene
   // correo configurado: no se le puede decir que le llegara un correo si no.
   const { data: checkoutData } = useQuery<{ checkoutInfo: CheckoutInfo }>(CHECKOUT_INFO);
@@ -203,6 +215,13 @@ export function CartDrawer() {
     if (form.paymentMethod === "CASH_ON_DELIVERY" && codReason) setForm(current => ({ ...current, paymentMethod: "BANK_TRANSFER" }));
   }, [form.paymentMethod, codReason]);
   const explore = () => { close(); navigate(catalogHref()); };
+  // Carrito vaciado durante la entrega (otra pestaña compró o lo vació): sin esto quedaba en
+  // «Calculando…» sin «Confirmar» ni «Volver» (C63, V12).
+  const [emptiedDuringCheckout, setEmptiedDuringCheckout] = useState(false);
+  useEffect(() => {
+    if (step === "checkout" && !items.length && !submittingRef.current) { setStep("cart"); setEmptiedDuringCheckout(true); }
+    if (items.length) setEmptiedDuringCheckout(false);
+  }, [step, items.length]);
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (submittingRef.current || !items.length || (!totalsReady && !canRetry)) return;
@@ -216,10 +235,15 @@ export function CartDrawer() {
     if (!form.city) errors.city = "Elige tu ciudad.";
     const idIssue = identificationProblem(form.idType, form.idNumber);
     if (idIssue) errors.idNumber = idIssue;
-    if (Object.keys(errors).length) { setFieldErrors(errors); requestAnimationFrame(() => document.getElementById(`checkout-${Object.keys(errors)[0]}`)?.focus()); return; }
+    // Un campo vacío recibe su mensaje propio en vez del de formato.
+    for (const key of Object.keys(missingMessages) as (keyof CheckoutForm)[]) if (!String(form[key] ?? "").trim()) errors[key] = missingMessages[key]!;
+    const first = fieldOrder.find(key => errors[key]);
+    if (first) { setFieldErrors(errors); requestAnimationFrame(() => document.getElementById(`checkout-${first}`)?.focus()); return; }
     // Un reintento de la misma solicitud no crea otro pedido; uno nuevo con los mismos productos sí, así que se pregunta.
     const previous = !canRetry && !repeatConfirmed.current ? recentSameOrder(items) : null;
     if (previous) { setRepeatOf(previous); requestAnimationFrame(() => repeatRef.current?.focus()); return; }
+    const captchaKey = checkoutInfo?.captchaSiteKey;
+    if (captchaKey && !captchaToken && !captchaUnavailable && !canRetry) { setSubmitError(new Error("Estamos comprobando la conexión de forma segura. Vuelve a pulsar «Confirmar pedido» en unos segundos.")); return; }
     const purchasedItems = items.map(item => ({ ...item }));
     let submittedAttempt: Awaited<ReturnType<typeof checkoutAttempt>> | null = null;
     // Lock before awaiting the fingerprint: rapid clicks must share one request.
@@ -231,7 +255,7 @@ export function CartDrawer() {
     submittedAttempt = attempt;
     if (!attempt || attempt.expectedTotal === undefined) throw new Error("Actualiza el total antes de crear un pedido nuevo.");
     setRetryInput(checkoutInput);
-    const result = await createOrder({ variables: { input: { ...checkoutInput, expectedTotal: attempt.expectedTotal, idempotencyKey: attempt.key } } });
+    const result = await createOrder({ variables: { input: { ...checkoutInput, expectedTotal: attempt.expectedTotal, idempotencyKey: attempt.key, ...(captchaToken ? { captchaToken } : {}) } } });
     const order = result.data?.createCheckoutOrder;
     if (!order) throw new Error("No se recibió la confirmación del pedido. Vuelve a intentarlo; se conservará la misma solicitud.");
     attempt.complete();
@@ -263,6 +287,8 @@ export function CartDrawer() {
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
+      // Token de un solo uso: se pide otro para el próximo intento.
+      if (captchaKey) setCaptchaReset(value => value + 1);
     }
   };
 
@@ -271,7 +297,7 @@ export function CartDrawer() {
       <div className={`drawer-backdrop ${isOpen ? "is-visible" : ""}`} onClick={close} aria-hidden="true" />
       <aside
         ref={dialogRef}
-        className={`cart-drawer ${isOpen ? "is-open" : ""}`}
+        className={`cart-drawer step-${step} ${isOpen ? "is-open" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="cart-drawer-heading"
@@ -295,6 +321,9 @@ export function CartDrawer() {
 
         {step === "cart" && (
           <div className="drawer-body">
+            {!items.length && emptiedDuringCheckout && (
+              <p className="notice" role="status">Tu carrito quedó vacío mientras completabas la entrega. Si hiciste el pedido en otra pestaña, revísalo en <Link to="/pedido" onClick={close}>Consulta tu pedido</Link>.</p>
+            )}
             {!items.length && (
               <div className="empty-cart">
                 <ShoppingBag size={40} aria-hidden="true" />
@@ -325,7 +354,7 @@ export function CartDrawer() {
         )}
 
         {step === "checkout" && (
-          <form className="drawer-body checkout-form" id="checkout-form" onSubmit={submit} onInvalid={event => { const input = event.target as HTMLInputElement; setFieldErrors(current => ({ ...current, [input.name]: input.name === "idNumber" ? (identificationProblem(form.idType, input.value) ?? "Revisa este dato.") : input.validity.valueMissing ? (missingMessages[input.name] ?? "Completa este campo.") : input.type === "email" ? "Escribe un correo válido, por ejemplo nombre@dominio.com." : "Revisa el formato y la longitud de este campo." })); }}>
+          <form className="drawer-body checkout-form" id="checkout-form" onSubmit={submit} noValidate>
             <p className="muted">Compra sin crear una cuenta. Al confirmar, terminas tu compra por WhatsApp con nuestro equipo{bankOnWeb ? "" : ": ahí te damos los datos para pagar"}.</p>
             <div className="order-summary">
               <div><span>{units}</span><span>{formatMoney(totals.subtotal)}</span></div>
@@ -339,8 +368,10 @@ export function CartDrawer() {
               ) : (
                 <>
                   <label className="field" htmlFor="checkout-discount">Código de descuento <small className="field-help">(opcional)</small></label>
+                  {/* El código anunciado se ofrece como botón: como texto de ejemplo parecía ya escrito (C63, V23). */}
+                  {checkoutInfo?.welcomeDiscount?.code && !discountCode && <button type="button" className="btn btn-outline btn-sm discount-suggest" disabled={totalsQuery.loading} onClick={() => { const code = checkoutInfo.welcomeDiscount!.code!; setCodeDraft(code); setDiscountNotice(null); setDiscountCode(code); }}><Tag size={16} aria-hidden="true" /> Usar {checkoutInfo.welcomeDiscount.code} ({checkoutInfo.welcomeDiscount.percent} % en tu primera compra)</button>}
                   <div className="discount-row">
-                    <input id="checkout-discount" value={codeDraft} onChange={event => setCodeDraft(event.target.value)} onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); applyCode(); } }} autoCapitalize="characters" autoComplete="off" spellCheck={false} maxLength={30} placeholder={checkoutInfo?.welcomeDiscount?.code ?? ""} aria-invalid={codeRejected ? true : undefined} aria-describedby={codeRejected || discountNotice ? "discount-message" : undefined} />
+                    <input id="checkout-discount" value={codeDraft} onChange={event => setCodeDraft(event.target.value)} onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); applyCode(); } }} autoCapitalize="characters" autoComplete="off" spellCheck={false} maxLength={30} placeholder="Escribe tu código" aria-invalid={codeRejected ? true : undefined} aria-describedby={codeRejected || discountNotice ? "discount-message" : undefined} />
                     <button type="button" className="btn btn-outline" disabled={!codeDraft.trim() || totalsQuery.loading} onClick={applyCode}>Aplicar</button>
                   </div>
                   {(codeRejected || discountNotice) && <p id="discount-message" className="field-error" role="alert" tabIndex={-1} ref={discountNoticeRef}>{discountNotice ?? codeRejected}</p>}
@@ -406,6 +437,8 @@ export function CartDrawer() {
             )}
             {formError && <div className="notice notice-error checkout-error" role="alert" tabIndex={-1} ref={errorRef}>{friendlyError(formError, "No se pudo crear el pedido. Tus datos se conservan para volver a intentarlo.")}</div>}
             {canRetry && <p className="notice">Hay una solicitud sin confirmar con estos datos. Reintentar recupera el mismo pedido si ya se registró.</p>}
+            {checkoutInfo?.captchaSiteKey && <Turnstile siteKey={checkoutInfo.captchaSiteKey} resetKey={captchaReset} onToken={setCaptchaToken} onUnavailable={() => setCaptchaUnavailable(true)} />}
+            {captchaUnavailable && <p className="field-help" role="status">No se pudo cargar la verificación de seguridad. Si tienes un bloqueador de anuncios, permítelo en esta tienda y recarga la página.</p>}
             {whatsapp && <p className="field-help whatsapp-next"><MessageCircle size={16} aria-hidden="true" /> Después de confirmar, continúas por WhatsApp con tu pedido listo para enviar.</p>}
             <p className="field-help legal-accept">No aceptamos cambios ni devoluciones por preferencia: revisa sabor y tamaño antes de confirmar. Al confirmar aceptas los <a href="/legal/terminos" target="_blank" rel="noopener">términos y condiciones</a>, la <a href="/legal/devoluciones" target="_blank" rel="noopener">política de cambios</a> y la <a href="/legal/privacidad" target="_blank" rel="noopener">política de privacidad</a>.</p>
           </form>

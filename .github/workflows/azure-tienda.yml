@@ -31,8 +31,10 @@ jobs:
     env:
       VITE_GRAPHQL_URL: ${{ vars.VITE_GRAPHQL_URL }}
       VITE_ADMIN_URL: ${{ vars.VITE_ADMIN_URL }}
+      # Dirección pública de la tienda: vista previa al compartir (Open Graph, C62).
+      VITE_WEB_URL: ${{ vars.VITE_WEB_URL }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5 (fijada por SHA, C61)
 
       # Sin estas variables Vite compilaría apuntando a localhost.
       - name: Revisar la configuración
@@ -41,7 +43,7 @@ jobs:
         run: |
           fallo=0
           [ -n "$TOKEN" ] || { echo "::error::Falta el secreto AZURE_STATIC_WEB_APPS_API_TOKEN_LIVELY_FLOWER_016983B10"; fallo=1; }
-          for nombre in VITE_GRAPHQL_URL VITE_ADMIN_URL; do
+          for nombre in VITE_GRAPHQL_URL VITE_ADMIN_URL VITE_WEB_URL; do
             valor="${!nombre}"
             case "$valor" in
               https://*) ;;
@@ -51,7 +53,7 @@ jobs:
           case "$VITE_GRAPHQL_URL" in */graphql) ;; *) echo "::error::VITE_GRAPHQL_URL debe terminar en /graphql"; fallo=1 ;; esac
           exit $fallo
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 22
           cache: npm
@@ -62,7 +64,7 @@ jobs:
         run: npm run build --workspace @vital-forge/web
 
       - name: Publicar en Azure Static Web Apps
-        uses: Azure/static-web-apps-deploy@v1
+        uses: Azure/static-web-apps-deploy@1a947af9992250f3bc2e68ad0754c0b0c11566c9 # v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_LIVELY_FLOWER_016983B10 }}
           action: upload

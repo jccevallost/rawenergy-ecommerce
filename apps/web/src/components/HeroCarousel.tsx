@@ -23,7 +23,7 @@ export type HeroSlide = {
 
 /** Foto de campaña o collage de hasta tres productos reales con su precio vigente. */
 function SlideMedia({ slide }: { slide: HeroSlide }) {
-  if (slide.imageUrl) return <div className="promo-media promo-media-banner"><AssetImage candidates={[slide.imageUrl]} alt="" loading="eager" className="promo-banner" fallback={<span className="photo-fallback"><Package size={64} /></span>} /></div>;
+  if (slide.imageUrl) return <div className="promo-media promo-media-banner"><AssetImage candidates={[slide.imageUrl]} alt="" loading="eager" priority sizes="(min-width: 901px) 640px, 100vw" className="promo-banner" fallback={<span className="photo-fallback"><Package size={64} /></span>} /></div>;
   const picks = slide.products.slice(0, 3);
   if (!picks.length) return <div className="promo-media"><span className="photo-fallback"><Package size={72} /></span></div>;
   return (
@@ -31,7 +31,7 @@ function SlideMedia({ slide }: { slide: HeroSlide }) {
       {picks.map((product, index) => (
         <li key={product.id}>
           <Link to={productHref(product.slug)} onClick={() => keepPreview(product)} aria-label={`${product.title}, desde ${formatMoney(product.priceRange.min)}`}>
-            <AssetImage candidates={productThumbCandidates(product)} alt="" loading={index === 0 ? "eager" : "lazy"} fallback={<PhotoFallback brand={product.brand} />} />
+            <AssetImage candidates={productThumbCandidates(product)} alt="" loading={index === 0 ? "eager" : "lazy"} priority={index === 0} sizes={index === 0 ? "(min-width: 901px) 300px, 34vw" : "(min-width: 901px) 160px, 30vw"} fallback={<PhotoFallback brand={product.brand} />} />
             <span aria-hidden="true"><b>{product.title}</b><small>{product.priceRange.min !== product.priceRange.max && <span className="collage-from">Desde </span>}{formatMoney(product.priceRange.min)}</small></span>
           </Link>
         </li>

@@ -1,0 +1,3 @@
+# Panel de administración: no se indexa (C62). También lleva X-Robots-Tag: noindex.
+User-agent: *
+Disallow: /

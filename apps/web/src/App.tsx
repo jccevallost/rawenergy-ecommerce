@@ -1,8 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useApolloClient } from "@apollo/client";
-import type { AuthUser } from "@vital-forge/shared-logic";
-import { type AuthMode, AuthDialog } from "./components/AuthDialog";
-import { CartDrawer } from "./components/CartDrawer";
+import { type AuthUser, useCartStore } from "@vital-forge/shared-logic";
+import type { AuthMode } from "./components/AuthDialog";
 import { Footer } from "./components/Footer";
 import { Header } from "./components/Header";
 import { MobileMenu } from "./components/MobileMenu";
@@ -24,13 +23,22 @@ const ProductPage = lazy(() => loadProduct().then(module => ({ default: module.P
 const CampaignPage = lazy(() => loadCampaign().then(module => ({ default: module.CampaignPage })));
 const TrackOrderPage = lazy(() => loadTrack().then(module => ({ default: module.TrackOrderPage })));
 const LegalPage = lazy(() => loadLegal().then(module => ({ default: module.LegalPage })));
+// Carrito con la entrega (lista de 223 cantones) y acceso se descargan aparte (C64, V15): no hacen
+// falta para ver la portada. Se precargan en reposo y se montan al abrirlos.
+const loadCart = () => import("./components/CartDrawer");
+const loadAuth = () => import("./components/AuthDialog");
+const CartDrawer = lazy(() => loadCart().then(module => ({ default: module.CartDrawer })));
+const AuthDialog = lazy(() => loadAuth().then(module => ({ default: module.AuthDialog })));
 const MyOrdersDialog = lazy(() => import("./components/MyOrdersDialog").then(module => ({ default: module.MyOrdersDialog })));
 
 const ADMIN_URL = import.meta.env.VITE_ADMIN_URL ?? "http://localhost:5174";
 
 function readStoredUser() {
   try {
-    return JSON.parse(localStorage.getItem("rawenergy-user") || "null") as AuthUser | null;
+    const stored = JSON.parse(localStorage.getItem("rawenergy-user") || "null") as AuthUser | null;
+    // Sesiones del personal guardadas antes de C62 (S10): la tienda solo conserva cuentas de cliente.
+    if (stored && stored.role !== "CUSTOMER") { localStorage.removeItem("rawenergy-token"); localStorage.removeItem("rawenergy-user"); return null; }
+    return stored;
   } catch {
     return null;
   }
@@ -57,6 +65,9 @@ export default function App() {
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const client = useApolloClient();
   const dialogOpen = useAnyModalLayer();
+  const cartOpen = useCartStore(state => state.isOpen);
+  // El carrito se monta cerrado tras la precarga (así se anima al abrir) o al pedirlo antes.
+  const [cartReady, setCartReady] = useState(false);
 
   // Enlace directo a una sección (/#envios): React pinta después de que el
   // navegador intentó saltar, así que se repite al montar.
@@ -66,7 +77,7 @@ export default function App() {
 
   // Descarga catálogo y ficha en segundo plano para que el primer cambio de vista sea inmediato.
   useEffect(() => {
-    const preload = () => { void loadCatalog(); void loadProduct(); void loadCampaign(); };
+    const preload = () => { void loadCatalog(); void loadProduct(); void loadCampaign(); void loadAuth(); void loadCart().then(() => setCartReady(true)); };
     if ("requestIdleCallback" in window) { const id = window.requestIdleCallback(preload, { timeout: 3000 }); return () => window.cancelIdleCallback(id); }
     const timer = setTimeout(preload, 1500);
     return () => clearTimeout(timer);
@@ -125,7 +136,7 @@ export default function App() {
           const trigger = (event.target as Element).closest<HTMLElement>("button, a, input, select");
           if (trigger && event.currentTarget.contains(trigger)) returnFocusTo.current = trigger;
         }}>
-        <Header user={user} adminUrl={ADMIN_URL} menuOpen={menuOpen} onMenu={() => setMenuOpen(true)} onLogin={() => setAuthOpen("login")} onOrders={openOrders} onLogout={logout} />
+        <Header user={user} menuOpen={menuOpen} onMenu={() => setMenuOpen(true)} onLogin={() => setAuthOpen("login")} onOrders={openOrders} onLogout={logout} />
         <main id="contenido" tabIndex={-1} className="page">
           <Suspense fallback={<p className="container loading-line loading-page" role="status">Cargando…</p>}>
             {route.name === "home" ? <HomePage />
@@ -139,10 +150,10 @@ export default function App() {
         </main>
         <Footer onOrders={openOrders} />
       </div>
-      <MobileMenu open={menuOpen} user={user} adminUrl={ADMIN_URL} onClose={closeMenu} onLogin={setAuthOpen} onOrders={openOrders} onLogout={logout} />
-      <CartDrawer />
+      <MobileMenu open={menuOpen} user={user} onClose={closeMenu} onLogin={setAuthOpen} onOrders={openOrders} onLogout={logout} />
+      {(cartReady || cartOpen) && <Suspense fallback={null}><CartDrawer /></Suspense>}
       <Toaster />
-      {authOpen && <AuthDialog mode={authOpen} adminUrl={ADMIN_URL} onMode={setAuthOpen} onClose={() => setAuthOpen(null)} onAuthed={authed} />}
+      {authOpen && <Suspense fallback={<p className="loading-dialog" role="status">Cargando…</p>}><AuthDialog mode={authOpen} adminUrl={ADMIN_URL} onMode={setAuthOpen} onClose={() => setAuthOpen(null)} onAuthed={authed} /></Suspense>}
       {ordersOpen && user && <Suspense fallback={<p className="loading-dialog" role="status">Cargando pedidos…</p>}><MyOrdersDialog email={user.email} onClose={() => setOrdersOpen(false)} /></Suspense>}
     </div>
   );

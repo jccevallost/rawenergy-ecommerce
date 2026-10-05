@@ -6,17 +6,16 @@ import { AssetImage } from "./AssetImage";
 import { PhotoFallback } from "./PhotoFallback";
 import { productThumbCandidates } from "../lib/assetCatalog";
 import { productHref } from "../lib/catalogUrl";
-import { cheapestSize, presentationSummary } from "../lib/presentations";
+import { LOW_STOCK, presentationLabel, presentationSummary } from "../lib/presentations";
 import { flyPhoto, keepPreview } from "../lib/productPreview";
 import { Link } from "../lib/router";
 import { showToast } from "../lib/toast";
 import { useSingleFlight } from "../lib/useSingleFlight";
 
-export const variantLabel = (variant: Product["variants"][number]) => {
-  const size = variant.size?.value ?? variant.sizeValue;
-  const unit = variant.size?.unit ?? variant.sizeUnit ?? "";
-  return [variant.flavor, size ? `${size} ${unit}`.trim() : unit].filter(Boolean).join(" · ");
-};
+export const variantLabel = presentationLabel;
+
+// Ancho de la foto de una tarjeta: 2 columnas en el móvil, 3–4 en tableta y hasta ~240 px en escritorio.
+const CARD_SIZES = "(min-width: 1101px) 240px, (min-width: 561px) 31vw, 46vw";
 
 export function ProductCard({ product, priority = false }: { product: Product; priority?: boolean }) {
   const { addItem, toggleCart } = useCartOrchestrator();
@@ -27,13 +26,12 @@ export function ProductCard({ product, priority = false }: { product: Product; p
   const candidates = productThumbCandidates(product);
   const hasOptions = product.variants.length > 1;
   const summary = presentationSummary(product);
-  const fromSize = hasOptions && summary.sizes.length > 1 ? cheapestSize(product) : "";
 
   const [add, adding] = useSingleFlight(() => {
     if (!variant || variant.stock <= 0) return;
     addItem({
       productId: product.id, variantSku: variant.sku, title: product.title, variantLabel: variantLabel(variant),
-      image: candidates[0], unitPrice: variant.price, quantity: 1, vitalCoinsReward: product.vitalCoinsReward, maxQuantity: variant.stock
+      image: candidates[0], unitPrice: variant.price, quantity: 1, maxQuantity: variant.stock
     }, { open: false });
     showToast(`Agregaste ${product.title} al carrito.`, { label: "Ver carrito", run: () => toggleCart(true) });
   }, 1500);
@@ -45,9 +43,9 @@ export function ProductCard({ product, priority = false }: { product: Product; p
   return (
     <article className="card" ref={card}>
       <Link to={href} className="card-media" tabIndex={-1} aria-hidden="true" onClick={open}>
-        <AssetImage candidates={candidates} alt="" loading={priority ? "eager" : "lazy"} fallback={<PhotoFallback brand={product.brand} />} />
+        <AssetImage candidates={candidates} alt="" loading={priority ? "eager" : "lazy"} sizes={CARD_SIZES} fallback={<PhotoFallback brand={product.brand} />} />
         {totalStock <= 0 ? <span className="badge badge-muted">Agotado</span>
-          : totalStock <= 8 ? <span className="badge badge-warning">Quedan {totalStock}</span>
+          : !hasOptions && variant.stock <= LOW_STOCK ? <span className="badge badge-warning">Quedan {variant.stock}</span>
           : product.featured ? <span className="badge">Destacado</span> : null}
       </Link>
       <div className="card-body">
@@ -56,7 +54,6 @@ export function ProductCard({ product, priority = false }: { product: Product; p
         <p className="card-price">
           {hasOptions && product.priceRange.min !== product.priceRange.max && <small>Desde </small>}
           <strong>{formatMoney(hasOptions ? product.priceRange.min : variant.price)}</strong>
-          {fromSize && <small className="card-price-size"> · {fromSize}</small>}
           {compareAt && <s aria-label={`Antes ${formatMoney(compareAt)}`}>{formatMoney(compareAt)}</s>}
         </p>
         {hasOptions && summary.text && <p className="card-options">{summary.text}</p>}

@@ -9,7 +9,7 @@ const product: Product = {
   variants: [{sku: "CAM-NEGRO-M", flavor: "Negro", sizeValue: 1, sizeUnit: "M", stock: 3, price: 20,
     imageUrls: ["https://example.test/frente.webp", "https://example.test/espalda.webp"], imageAlts: ["Vista frontal negra", "Costuras de la espalda"]}],
   categories: [{name: "Ropa", slug: "ropa"}], goals: [{name: "Entrenamiento", slug: "entrenamiento"}],
-  vitalCoinsReward: 0, maxInstallments: 1, hasFreeShipping: false, priceRange: {min: 20, max: 20}
+  priceRange: {min: 20, max: 20}
 };
 
 describe("Ficha y borradores de productos", () => {
@@ -36,7 +36,10 @@ describe("Ficha y borradores de productos", () => {
     expect(isProductForm(JSON.parse(JSON.stringify(form)))).toBe(true);
     expect(isProductForm({...form, variants: [{...form.variants[0], images: null}]})).toBe(false);
     expect(isProductForm({...form, variants: null})).toBe(false);
-    expect(isProductForm({...form, coins: Infinity})).toBe(false);
+    expect(isProductForm({...form, calories: Infinity})).toBe(false);
+    // Borradores guardados antes de C67 traen campos retirados: se aceptan y no se envían.
+    expect(isProductForm({...form, coins: 5, installments: 3, storeBadges: "x", freeShipping: true})).toBe(true);
+    expect(productFormToPayload({...form, coins: 5} as typeof form)).not.toHaveProperty("vitalCoinsReward");
     expect(productDraftKey("u1", "p1")).not.toBe(productDraftKey("u2", "p1"));
     expect(productDraftKey("u1:p1")).not.toBe(productDraftKey("u1", "p1"));
     expect(readDraft("absent", form, isProductForm)).toBe(form);

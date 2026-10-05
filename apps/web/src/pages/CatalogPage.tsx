@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
-import { type ProductFilters, useProductSearch } from "@vital-forge/shared-logic";
+import { useQuery } from "@apollo/client";
+import { CATALOG_CATEGORIES, type CatalogCategory, type ProductFilters, useProductSearch } from "@vital-forge/shared-logic";
+import { formatMoney } from "@vital-forge/ui-core";
 import { Filters } from "../components/Filters";
 import { ProductCard } from "../components/ProductCard";
 import { ProductSkeleton } from "../components/ProductSkeleton";
@@ -16,8 +18,10 @@ const PAGE_SIZE = 24;
 // Cambios rápidos de casillas se agrupan en una sola consulta.
 const FILTER_DELAY_MS = 400;
 
-const titleFor = (filters: ProductFilters) => {
+const titleFor = (filters: ProductFilters, typeName: (slug: string) => string) => {
   if (filters.search) return `Resultados para «${filters.search}»`;
+  const onlyType = filters.categories?.length === 1 && !filters.goals?.length && !filters.brands?.length ? filters.categories[0] : undefined;
+  if (onlyType) return typeName(onlyType);
   const onlyGoal = filters.goals?.length === 1 && !filters.brands?.length ? filters.goals[0] : undefined;
   if (onlyGoal) return goalName(onlyGoal);
   const onlyBrand = filters.brands?.length === 1 && !filters.goals?.length ? filters.brands[0] : undefined;
@@ -43,7 +47,9 @@ export function CatalogPage({ search }: { search: URLSearchParams }) {
   const { products, totalCount, loading, loadingMore, error, refetch, hasNextPage, loadMore } = useProductSearch(applied, PAGE_SIZE);
   const [more] = useSingleFlight(useCallback(() => loadMore(), [loadMore]));
   const [retry, retrying] = useSingleFlight(useCallback(() => refetch(), [refetch]));
-  const title = titleFor(applied);
+  const types = useQuery<{ catalogCategories: CatalogCategory[] }>(CATALOG_CATEGORIES);
+  const typeName = (slug: string) => types.data?.catalogCategories.find(category => category.slug === slug)?.name ?? slug.replace(/-/g, " ");
+  const title = titleFor(applied, typeName);
   const heading = useRef<HTMLHeadingElement>(null);
   usePageEntry(title, heading);
 
@@ -66,10 +72,11 @@ export function CatalogPage({ search }: { search: URLSearchParams }) {
   const initialLoading = loading && !loadingMore && !products.length;
   const chips = [
     ...(draft.search ? [{ label: `«${draft.search}»`, remove: { ...draft, search: undefined } }] : []),
+    ...(draft.categories ?? []).map(category => ({ label: typeName(category), remove: { ...draft, categories: draft.categories!.filter(item => item !== category) } })),
     ...(draft.goals ?? []).map(goal => ({ label: goalName(goal), remove: { ...draft, goals: draft.goals!.filter(item => item !== goal) } })),
     ...(draft.brands ?? []).map(brand => ({ label: brand, remove: { ...draft, brands: draft.brands!.filter(item => item !== brand) } })),
     ...(draft.inStock ? [{ label: "Con existencias", remove: { ...draft, inStock: undefined } }] : []),
-    ...(draft.minPrice !== undefined || draft.maxPrice !== undefined ? [{ label: `$${draft.minPrice ?? 0} – ${draft.maxPrice === undefined ? "sin límite" : `$${draft.maxPrice}`}`, remove: { ...draft, minPrice: undefined, maxPrice: undefined } }] : [])
+    ...(draft.minPrice !== undefined || draft.maxPrice !== undefined ? [{ label: `${formatMoney(draft.minPrice ?? 0)} – ${draft.maxPrice === undefined ? "sin límite" : formatMoney(draft.maxPrice)}`, remove: { ...draft, minPrice: undefined, maxPrice: undefined } }] : [])
   ];
 
   return (

@@ -9,7 +9,7 @@ const root = resolve('.');
 const out = await mkdtemp(join(tmpdir(), 'rawenergy-store-review-'));
 const apiPort = 14851, uiPort = 14852, debugPort = 14853;
 const api = `http://127.0.0.1:${apiPort}`, ui = `http://127.0.0.1:${uiPort}`;
-const env = { PATH: process.env.PATH, NODE_ENV: 'development', DOTENV_CONFIG_PATH: '/dev/null', PORT: String(apiPort), CORS_ORIGINS: ui, PUBLIC_API_URL: api, AUTH_TOKEN_SECRET: 'isolated-storefront-review-secret-123456', ADMIN_EMAIL: 'review@example.com', ADMIN_PASSWORD: 'Review-only-123!', ADMIN_NAME: 'Revisión', VITE_GRAPHQL_URL: `${api}/graphql`, FREE_SHIPPING_THRESHOLD: '95', GRAPHQL_RATE_LIMIT_PER_MINUTE: '400', BANK_NAME: 'Banco ficticio de prueba', BANK_ACCOUNT_TYPE: 'Ahorros', BANK_ACCOUNT_NUMBER: '0000000000', BANK_HOLDER: 'Tienda de prueba', STORE_WHATSAPP: '593983368127' };
+const env = { PATH: process.env.PATH, NODE_ENV: 'development', DOTENV_CONFIG_PATH: '/dev/null', PORT: String(apiPort), CORS_ORIGINS: ui, PUBLIC_API_URL: api, AUTH_TOKEN_SECRET: 'isolated-storefront-review-secret-123456', ADMIN_EMAIL: 'review@example.com', ADMIN_PASSWORD: 'Review-only-123!', ADMIN_NAME: 'Revisión', VITE_GRAPHQL_URL: `${api}/graphql`, FREE_SHIPPING_THRESHOLD: '95', GRAPHQL_RATE_LIMIT_PER_MINUTE: '400', MAX_PENDING_ORDERS_PER_CUSTOMER: '20', BANK_NAME: 'Banco ficticio de prueba', BANK_ACCOUNT_TYPE: 'Ahorros', BANK_ACCOUNT_NUMBER: '0000000000', BANK_HOLDER: 'Tienda de prueba', STORE_WHATSAPP: '593983368127' };
 const processes = [], logs = [], exceptions = [], checks = [], accessibility = [];
 let socket, inspect;
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -28,9 +28,9 @@ try {
   await waitFor(async () => (await fetch(`${api}/health`)).ok, 'API'); await waitFor(async () => (await fetch(ui)).ok, 'Tienda');
   const { login: { token } } = await gql('mutation($input:LoginInput!){login(input:$input){token}}', { input: { email: env.ADMIN_EMAIL, password: env.ADMIN_PASSWORD } });
   // Fixture de galería y agotado. Imágenes del repositorio; no sustituye revisión de fotos comerciales.
-  const payload = { title: 'Producto de revisión', brand: 'Marca de revisión', slug: 'producto-revision', shortDescription: 'Presentación de prueba para revisar la selección de sabor y fotografías.', productType: 'SUPPLEMENT', nutritionalFacts: { servingSize: '30 g', calories: 100, protein: 20, carbohydrates: 3, fats: 1 }, categories: [{ name: 'Prueba', slug: 'prueba' }], goals: [{ name: 'Desarrollo muscular', slug: 'desarrollo-muscular' }], vitalCoinsReward: 0, maxInstallments: 1, hasFreeShipping: false, storeBadges: [], featured: false, variants: [
-    { sku: 'REV-AGOTADO', flavor: 'Chocolate agotado', size: { value: 300, unit: 'g' }, price: 20, stock: 0, images: [{ url: `${ui}/assets/brands/raw-nutrition.png`, alt: 'Foto de prueba' }] },
-    { sku: 'REV-DISPONIBLE', flavor: 'Vainilla disponible', size: { value: 300, unit: 'g' }, price: 25, stock: 5, images: [{ url: `${ui}/assets/brands/raw-nutrition.png`, alt: 'Primera foto de prueba' }, { url: `${ui}/assets/brands/evogen.png`, alt: 'Segunda foto de prueba' }] }
+  const payload = { title: 'Producto de revisión', brand: 'Marca de revisión', slug: 'producto-revision', shortDescription: 'Presentación de prueba para revisar la selección de sabor y fotografías.', productType: 'SUPPLEMENT', nutritionalFacts: { servingSize: '30 g', calories: 100, protein: 20, carbohydrates: 3, fats: 1 }, categories: [{ name: 'Prueba', slug: 'prueba' }], goals: [{ name: 'Desarrollo muscular', slug: 'desarrollo-muscular' }], featured: false, variants: [
+    { sku: 'REV-AGOTADO', flavor: 'Chocolate agotado', size: { value: 300, unit: 'g' }, price: 20, stock: 0, images: [{ url: `/assets/brands/raw-nutrition.png`, alt: 'Foto de prueba' }] },
+    { sku: 'REV-DISPONIBLE', flavor: 'Vainilla disponible', size: { value: 300, unit: 'g' }, price: 25, stock: 5, images: [{ url: `/assets/brands/raw-nutrition.png`, alt: 'Primera foto de prueba' }, { url: `/assets/brands/evogen.png`, alt: 'Segunda foto de prueba' }] }
   ] };
   await gql('mutation($payload:JSON!){upsertProduct(payload:$payload){id}}', { payload }, token);
   const catalogTotal = (await gql('{searchProducts(pagination:{first:1}){totalCount}}')).searchProducts.totalCount;
@@ -185,7 +185,7 @@ try {
   await waitFor(() => js('document.querySelector(".checkout-summary-total").textContent.includes("30,00")'), 'Envío nacional 5 USD');
   await fill('select[name=province]', 'Pichincha'); await click('input[name=shippingMethod]');
   await waitFor(() => js('document.querySelector(".checkout-summary-total").textContent.includes("29,00")'), 'Express restaurado');
-  await fill('input[name=fullName]', '          '); await click('.drawer-foot .checkout'); await has('los espacios solos no cuentan');
+  await fill('input[name=fullName]', '          '); await click('.drawer-foot .checkout'); await has('Escribe tu nombre completo para la entrega');
   await fill('input[name=fullName]', 'Cliente de revisión');
   await inspectAccessibility('Checkout y ayudas');
   await shot('05-checkout-desktop');
@@ -310,7 +310,11 @@ try {
   await cdp('Page.navigate', { url: `${ui}/producto/producto-revision` }); await waitFor(() => js('!!document.querySelector(".buy-box h1")'), 'Ficha móvil'); await delay(300);
   await shot('10-producto-mobile');
   assert(await js('document.documentElement.scrollWidth<=innerWidth'), 'Ficha móvil sin desbordamiento');
-  assert(await js('(()=>{const r=document.querySelector(".mobile-buy-bar").getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight})()'), 'Precio y compra visibles en móvil');
+  // Desde C54 la barra fija aparece al pasar el bloque de compra (no al abrir la ficha).
+  assert(await js('document.querySelector(".mobile-buy-bar").classList.contains("is-hidden")'), 'Barra fija oculta al abrir la ficha');
+  await js('window.scrollTo(0, document.querySelector(".purchase").getBoundingClientRect().bottom + scrollY + 40)'); await delay(400);
+  assert(await js('(()=>{const bar=document.querySelector(".mobile-buy-bar");const r=bar.getBoundingClientRect();return !bar.classList.contains("is-hidden")&&r.top>=0&&r.bottom<=innerHeight&&bar.textContent.includes("$")})()'), 'Precio y compra visibles en móvil al pasar el bloque de compra');
+  await js('window.scrollTo(0, 0)'); await delay(200);
   await click('.mobile-buy-bar button'); await has('Agregaste'); await click('.cart-button'); await click('.drawer-foot .checkout'); await has('Datos de entrega');
   assert(await js('(()=>{const f=document.querySelector(".checkout-form");return f.scrollWidth<=f.clientWidth+1})()'), 'Formulario de entrega sin desbordamiento horizontal');
   await shot('11-checkout-mobile'); await inspectAccessibility('Checkout móvil');

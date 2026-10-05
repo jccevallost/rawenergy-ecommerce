@@ -1,0 +1,43 @@
+# Verifica cada cambio: tipos, pruebas y dependencias con avisos de seguridad (C61, S18).
+# No publica nada ni usa secretos. Los despliegues siguen en azure-tienda.yml,
+# azure-panel.yml y Render; este flujo avisa si algo se rompió o si una dependencia
+# de producción tiene un aviso alto o crítico.
+name: Verificar
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Lunes 12:00 UTC (07:00 en Ecuador): repasa avisos nuevos aunque no haya cambios.
+    - cron: "0 12 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verificar-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Tipos
+        run: npm run typecheck
+      - name: Pruebas
+        run: npm test
+      - name: Operaciones GraphQL de tienda y panel contra el esquema
+        run: npm run check:graphql
+      - name: Dependencias de producción sin avisos altos
+        run: npm audit --omit=dev --audit-level=high

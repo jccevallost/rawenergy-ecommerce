@@ -7,6 +7,10 @@ export type FormState = {
   brand: string;
   slug: string;
   description: string;
+  /** Datos de la etiqueta (C66, V19). Opcionales: los borradores anteriores no los traen. */
+  ingredients?: string;
+  usage?: string;
+  warnings?: string;
   productType: "SUPPLEMENT" | "APPAREL";
   flavors: string[];
   sizes: string[];
@@ -18,10 +22,6 @@ export type FormState = {
   carbs: number | null;
   fats: number | null;
   servingSize: string;
-  coins: number;
-  installments: number;
-  freeShipping: boolean;
-  storeBadges: string;
   featured: boolean;
   variants: VariantDraft[];
 };
@@ -31,6 +31,9 @@ export const initial: FormState = {
   brand: "",
   slug: "",
   description: "",
+  ingredients: "",
+  usage: "",
+  warnings: "",
   productType: "SUPPLEMENT",
   flavors: ["Natural"],
   sizes: ["2 lb"],
@@ -41,10 +44,6 @@ export const initial: FormState = {
   carbs: null,
   fats: null,
   servingSize: "",
-  coins: 0,
-  installments: 1,
-  freeShipping: false,
-  storeBadges: "Express 4h Quito y Valles, Gratis en ordenes seleccionadas, Producto original asegurado",
   featured: false,
   variants: []
 };
@@ -96,6 +95,9 @@ export function productToForm(product: Product): FormState {
     brand: product.brand,
     slug: product.slug,
     description: product.shortDescription,
+    ingredients: product.ingredients ?? "",
+    usage: product.usage ?? "",
+    warnings: product.warnings ?? "",
     productType: product.productType,
     flavors: [...new Set(variants.map((variant) => variant.flavor))],
     sizes: [...new Set(variants.map(variantLabel))],
@@ -106,10 +108,6 @@ export function productToForm(product: Product): FormState {
     carbs: product.nutritionalFacts?.carbohydrates ?? null,
     fats: product.nutritionalFacts?.fats ?? null,
     servingSize: product.nutritionalFacts?.servingSize ?? "",
-    coins: product.vitalCoinsReward,
-    installments: product.maxInstallments,
-    freeShipping: product.hasFreeShipping,
-    storeBadges: (product.storeBadges ?? []).join(", "),
     featured: product.featured ?? false,
     variants
   };
@@ -122,13 +120,12 @@ const strings = (value: unknown): value is string[] => Array.isArray(value) && v
 /** Validate stored data before it reaches controls that expect arrays and nested images. */
 export function isProductForm(value: unknown): value is FormState {
   if (!record(value)) return false;
-  if (!["title", "brand", "slug", "description", "categories", "servingSize", "storeBadges"].every(key => typeof value[key] === "string")) return false;
-  if (!["coins", "installments"].every(key => finite(value[key]))) return false;
+  if (!["title", "brand", "slug", "description", "categories", "servingSize"].every(key => typeof value[key] === "string")) return false;
   if (!["calories", "protein", "carbs", "fats"].every(key => value[key] === null || finite(value[key]))) return false;
   if (value.sourceRevision !== undefined && (!finite(value.sourceRevision) || !Number.isInteger(value.sourceRevision) || value.sourceRevision < 0)) return false;
   if (value.sourceStocks !== undefined && (!Array.isArray(value.sourceStocks) || !value.sourceStocks.every(item => record(item) && typeof item.sku === "string" && finite(item.stock) && Number.isInteger(item.stock) && item.stock >= 0))) return false;
   if (value.productType !== "SUPPLEMENT" && value.productType !== "APPAREL") return false;
-  if (typeof value.freeShipping !== "boolean" || typeof value.featured !== "boolean") return false;
+  if (typeof value.featured !== "boolean") return false;
   if (![value.flavors, value.sizes, value.goals].every(strings)) return false;
   return Array.isArray(value.variants) && value.variants.length <= 120 && value.variants.every(variant =>
     record(variant) && typeof variant.flavor === "string" && typeof variant.sku === "string" &&
@@ -158,10 +155,6 @@ export function validateProductForm(form: FormState): string[] {
     if (!form.servingSize.trim()) errors.push("Completa el tamaño de la porción");
     if (![form.calories, form.protein, form.carbs, form.fats].every(value => value === null || inRange(value, 0))) errors.push("Información nutricional: usa números positivos o cero, o deja vacío lo que la etiqueta no declara");
   }
-  if (!integerInRange(form.coins, 0, 2147483647)) errors.push("Energy Points: ingresa un número entero positivo o cero (máximo 2147483647)");
-  if (!integerInRange(form.installments, 1, 24)) errors.push("Cuotas: elige un número entero entre 1 y 24");
-  const badges = listFromText(form.storeBadges);
-  if (badges.length > 5 || badges.some(value => !textInRange(value, 3, 72))) errors.push("Mensajes comerciales: máximo 5 mensajes de entre 3 y 72 caracteres");
   if (!form.variants.length || form.variants.length > 120) errors.push("Agrega entre 1 y 120 variantes antes de publicar");
   const skus = new Set<string>();
   form.variants.forEach((variant, index) => {
@@ -190,6 +183,9 @@ export function productFormToPayload(form: FormState, product?: Product | null) 
     brand: form.brand,
     slug: form.slug,
     shortDescription: form.description,
+    ingredients: form.ingredients?.trim() ?? "",
+    usage: form.usage?.trim() ?? "",
+    warnings: form.warnings?.trim() ?? "",
     productType: form.productType,
     nutritionalFacts: form.productType === "SUPPLEMENT" ? { servingSize: form.servingSize, calories: form.calories, protein: form.protein, carbohydrates: form.carbs, fats: form.fats } : null,
     variants: form.variants.map(variant => ({
@@ -200,10 +196,6 @@ export function productFormToPayload(form: FormState, product?: Product | null) 
     })),
     categories: listFromText(form.categories).map(name => { const current = product?.categories.find(item => item.name === name); return current ? { name: current.name, slug: current.slug } : ref(name); }),
     goals: form.goals.map(name => { const current = product?.goals.find(item => item.name === name); return current ? { name: current.name, slug: current.slug } : ref(name); }),
-    vitalCoinsReward: form.coins,
-    maxInstallments: form.installments,
-    hasFreeShipping: form.freeShipping,
-    storeBadges: listFromText(form.storeBadges),
     featured: form.featured
   };
 }

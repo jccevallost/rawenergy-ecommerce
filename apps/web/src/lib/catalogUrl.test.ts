@@ -30,4 +30,9 @@ describe("filtros del catálogo en la URL", () => {
     expect(parse("marca=Evogen&marca=Evogen&marca=%20").brands).toEqual(["Evogen"]);
     expect(parse("min=0").minPrice).toBe(0);
   });
+  it("lee y escribe el tipo de producto (C65)", () => {
+    const filters = filtersFromSearch(new URLSearchParams("tipo=creatina&tipo=preentreno&tipo=MAL%20escrito"));
+    expect(filters.categories).toEqual(["creatina", "preentreno"]);
+    expect(catalogHref({ categories: ["creatina"] })).toBe("/catalogo?tipo=creatina");
+  });
 });

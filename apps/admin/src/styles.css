@@ -34,6 +34,9 @@
 .filter-select span{font-size:12px;text-transform:uppercase;letter-spacing:.09em;font-weight:800;color:#6a706b}
 .filter-select select{border:0;outline:0;background:transparent;font-size:12px;font-weight:700}
 .filter-clear{height:38px;padding:0 14px;border:1px solid var(--line);border-radius:9px;background:white;font-size:12px;font-weight:700;color:#3e453f}
+/* C63 (S08): filtro de pedidos con código de descuento. */
+.filter-check{display:inline-flex;align-items:center;gap:8px;min-height:38px;font-size:14px;font-weight:600;color:#3e453f}
+.filter-check input{width:18px;height:18px;accent-color:#3f6f1f}
 .orders-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
 .order-card{background:white;border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:8px}
 .order-card>header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}

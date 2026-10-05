@@ -65,7 +65,7 @@ export function Gallery({ photos, brand }: { photos: Photo[]; brand: string }) {
         onTouchStart={event => { touchStart.current = event.touches[0]?.clientX ?? null; }}
         onTouchEnd={event => { const end = event.changedTouches[0]?.clientX; if (many && touchStart.current !== null && end !== undefined && Math.abs(end - touchStart.current) > 50) go(current + (end < touchStart.current ? 1 : -1)); touchStart.current = null; }}>
         <button type="button" className="gallery-main" disabled={!photo} onClick={() => setZoomOpen(true)} aria-label={photo ? `Ampliar foto ${current + 1} de ${photos.length}` : "Fotografía no disponible"}>
-          <AssetImage key={photo?.url ?? "none"} candidates={[photo?.url]} alt={photo?.alt ?? ""} loading="eager" className="gallery-photo"
+          <AssetImage key={photo?.url ?? "none"} candidates={[photo?.url]} alt={photo?.alt ?? ""} loading="eager" priority={current === 0} sizes="(min-width: 901px) 560px, 92vw" className="gallery-photo"
             fallback={<PhotoFallback brand={brand} size={64} />} />
           {photo && <span className="gallery-hint" aria-hidden="true"><ZoomIn size={16} /> Ampliar</span>}
         </button>

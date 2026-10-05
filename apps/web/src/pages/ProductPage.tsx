@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@apollo/client";
 import { MessageCircle, Minus, Plus, ShieldCheck, ShoppingBag, Truck, Wallet } from "lucide-react";
-import { CHECKOUT_INFO, type CheckoutInfo, PRODUCT_BY_SLUG, type Product, useCartOrchestrator, useProductsByGoal } from "@vital-forge/shared-logic";
+import { CART_MAX_QUANTITY, CHECKOUT_INFO, type CheckoutInfo, PRODUCT_BY_SLUG, type Product, useCartOrchestrator, useProductsByGoal } from "@vital-forge/shared-logic";
 import { formatMoney } from "@vital-forge/ui-core";
 import { Gallery } from "../components/Gallery";
-import { sizeLabel } from "../lib/presentations";
+import { LOW_STOCK, sizeLabel } from "../lib/presentations";
 import { variantLabel } from "../components/ProductCard";
 import { ProductRail } from "../components/ProductRail";
 import { productImageCandidates } from "../lib/assetCatalog";
@@ -18,13 +18,7 @@ import { showToast } from "../lib/toast";
 import { useSingleFlight } from "../lib/useSingleFlight";
 import { whatsappHref } from "../lib/whatsapp";
 import { cashOnDeliveryConditions, freeShippingText } from "../lib/commerceText";
-
-type Variant = Product["variants"][number];
-const sizeOf = (variant: Variant) => {
-  const value = variant.size?.value ?? variant.sizeValue;
-  const unit = variant.size?.unit ?? variant.sizeUnit ?? "";
-  return value ? `${value} ${unit}`.trim() : unit || "Única";
-};
+import { EXPRESS_PROMISE, NATIONAL_PROMISE } from "../lib/storePromises";
 
 function OptionGroup({ legend, name, options, value, onChange }: { legend: string; name: string; options: Array<{ value: string; label: string; soldOut: boolean }>; value: string; onChange: (value: string) => void }) {
   return (
@@ -91,7 +85,7 @@ function ProductView({ product }: { product: Product }) {
   useProductMetadata(product);
 
   const variant = product.variants.find(candidate => candidate.sku === sku) ?? product.variants[0]!;
-  const maxQuantity = Math.max(1, Math.min(99, variant.stock));
+  const maxQuantity = Math.max(1, Math.min(CART_MAX_QUANTITY, variant.stock));
   useEffect(() => setQuantity(value => Math.min(value, maxQuantity)), [maxQuantity]);
   const flavors = [...new Set(product.variants.map(candidate => candidate.flavor))];
   const sizes = product.variants.filter(candidate => candidate.flavor === variant.flavor);
@@ -101,11 +95,11 @@ function ProductView({ product }: { product: Product }) {
   };
 
   const photosOf = (candidate: typeof variant) => candidate.images?.map(image => image.url) ?? candidate.imageUrls ?? [];
-  const variantPhotos = photosOf(variant);
   // Sin fotos propias (C47): primero las de otro sabor del mismo tamaño (mismo envase) y solo después la foto general.
-  const sameSize = product.variants.filter(candidate => candidate.sku !== variant.sku && sizeLabel(candidate) === sizeLabel(variant)).map(photosOf).find(list => list.length) ?? [];
-  const urls = [...new Set(variantPhotos.length ? variantPhotos : sameSize.length ? sameSize : productImageCandidates(product))];
-  const photos = urls.map((url, index) => ({ url, alt: variant.imageAlts?.[index] || `${product.title}, ${variantLabel(variant)}, foto ${index + 1}` }));
+  // El texto alternativo sale de la presentación dueña de la foto, no de la elegida (C63).
+  const source = photosOf(variant).length ? variant : product.variants.find(candidate => candidate.sku !== variant.sku && sizeLabel(candidate) === sizeLabel(variant) && photosOf(candidate).length);
+  const urls = [...new Set(source ? photosOf(source) : productImageCandidates(product))];
+  const photos = urls.map((url, index) => ({ url, alt: (source && (source.imageAlts?.[index] || `${product.title}, ${variantLabel(source)}, foto ${index + 1}`)) || `${product.title}, foto ${index + 1}` }));
   const soldOut = variant.stock <= 0;
   const compareAt = variant.compareAtPrice && variant.compareAtPrice > variant.price ? variant.compareAtPrice : null;
   const goal = product.goals[0];
@@ -113,7 +107,7 @@ function ProductView({ product }: { product: Product }) {
   const relatedProducts = related.data.filter(candidate => candidate.id !== product.id);
   const info = checkout?.checkoutInfo;
 
-  const line = () => ({ productId: product.id, variantSku: variant.sku, title: product.title, variantLabel: variantLabel(variant), image: photos[0]?.url, unitPrice: variant.price, quantity, vitalCoinsReward: product.vitalCoinsReward, maxQuantity: variant.stock });
+  const line = () => ({ productId: product.id, variantSku: variant.sku, title: product.title, variantLabel: variantLabel(variant), image: photos[0]?.url, unitPrice: variant.price, quantity, maxQuantity: variant.stock });
   const [add, adding] = useSingleFlight(() => {
     if (soldOut) return;
     addItem(line(), { open: false });
@@ -148,15 +142,15 @@ function ProductView({ product }: { product: Product }) {
               <strong>{formatMoney(variant.price)}</strong>
               {compareAt && <><s><span className="sr-only">Precio anterior </span>{formatMoney(compareAt)}</s><span className="badge badge-success">Ahorras {formatMoney(compareAt - variant.price)}</span></>}
             </div>
-            <p className={`stock-line ${soldOut ? "is-out" : variant.stock <= 5 ? "is-low" : "is-ok"}`}>
-              {soldOut ? "Esta presentación está agotada. Elige otra opción." : variant.stock <= 5 ? `Disponible · quedan ${variant.stock} ${variant.stock === 1 ? "unidad" : "unidades"}` : "Disponible"}
+            <p className={`stock-line ${soldOut ? "is-out" : variant.stock <= LOW_STOCK ? "is-low" : "is-ok"}`}>
+              {soldOut ? "Esta presentación está agotada. Elige otra opción." : variant.stock <= LOW_STOCK ? `Disponible · quedan ${variant.stock} ${variant.stock === 1 ? "unidad" : "unidades"}` : "Disponible"}
             </p>
             {product.shortDescription && <p className="product-summary">{product.shortDescription}</p>}
 
             {flavors.length > 1 && <OptionGroup legend="Sabor" name="sabor" value={variant.flavor} onChange={pickFlavor}
               options={flavors.map(flavor => ({ value: flavor, label: flavor, soldOut: !product.variants.some(candidate => candidate.flavor === flavor && candidate.stock > 0) }))} />}
             {sizes.length > 1 && <OptionGroup legend="Tamaño" name="tamano" value={variant.sku} onChange={setSku}
-              options={sizes.map(candidate => ({ value: candidate.sku, label: sizeOf(candidate), soldOut: candidate.stock <= 0 }))} />}
+              options={sizes.map(candidate => ({ value: candidate.sku, label: sizeLabel(candidate) || "Única", soldOut: candidate.stock <= 0 }))} />}
             {flavors.length <= 1 && sizes.length <= 1 && <p className="selected-variant">Presentación: <b>{variantLabel(variant)}</b></p>}
 
             <div className="purchase" ref={purchaseRef}>
@@ -173,7 +167,7 @@ function ProductView({ product }: { product: Product }) {
             </div>
 
             <ul className="assurances">
-              <li><Truck size={20} aria-hidden="true" /><span>Express en 4 horas en Quito y Valles; Servientrega en 24 a 48 horas al resto del país. {info && freeShippingText(info) ? <b>{freeShippingText(info)}.</b> : "Verás el costo antes de confirmar."}</span></li>
+              <li><Truck size={20} aria-hidden="true" /><span>{EXPRESS_PROMISE}; {NATIONAL_PROMISE}. {info && freeShippingText(info) ? <b>{freeShippingText(info)}.</b> : "Verás el costo antes de confirmar."}</span></li>
               <li><Wallet size={20} aria-hidden="true" /><span>{info?.cashOnDelivery.enabled ? <>Transferencia bancaria o contra entrega ({cashOnDeliveryConditions(info)}); cierras tu compra por WhatsApp.</> : "Pago por transferencia bancaria; cierras tu compra por WhatsApp."} No aceptamos cambios ni devoluciones por preferencia.</span></li>
               <li><ShieldCheck size={20} aria-hidden="true" /><span>Compra sin crear una cuenta.</span></li>
             </ul>
@@ -199,12 +193,22 @@ function ProductView({ product }: { product: Product }) {
                     </tbody>
                   </table>
                 ) : (
-                  <p className="nutrition-note">Porción: <b>{facts.servingSize}</b>. La etiqueta no declara energía ni macronutrientes para este producto; revisa sus ingredientes activos en la descripción.</p>
+                  <p className="nutrition-note">Porción: <b>{facts.servingSize}</b>. La etiqueta no declara energía ni macronutrientes para este producto; revisa sus ingredientes activos en {product.ingredients ? "«Ingredientes y modo de uso»" : "la descripción"}.</p>
                 )}
                 <p className="nutrition-source">Datos según la etiqueta del fabricante. Revisa siempre la etiqueta del envase que recibes.</p>
               </section>
             );
           })()}
+          {/* Datos de la etiqueta (C66, V19): solo si el panel los cargó; vacíos no dejan un recuadro sin contenido. */}
+          {(product.ingredients || product.usage || product.warnings) && (
+            <section aria-labelledby="etiqueta" className="label-info">
+              <h2 id="etiqueta">Ingredientes y modo de uso</h2>
+              {product.warnings && <p className="label-warning"><b>Advertencias:</b> {product.warnings}</p>}
+              {product.ingredients && <><h3>Ingredientes</h3><p className="label-text">{product.ingredients}</p></>}
+              {product.usage && <><h3>Modo de uso</h3><p className="label-text">{product.usage}</p></>}
+              <p className="nutrition-source">Según la etiqueta del fabricante. Revisa siempre la etiqueta del envase que recibes.</p>
+            </section>
+          )}
           <section aria-labelledby="presentacion">
             <h2 id="presentacion">Presentación</h2>
             <dl className="facts">

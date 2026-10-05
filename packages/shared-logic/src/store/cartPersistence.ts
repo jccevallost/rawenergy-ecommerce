@@ -1,7 +1,9 @@
 import type { CartItem } from "../types";
 export const CART_STORAGE_KEY = "rawenergy-cart-v1";
 export const CART_MAX_LINES = 60;
-export const CART_MAX_QUANTITY = 99;
+// Unidades por presentación (C60, S04): igual que MAX_UNITS_PER_LINE de la API. Antes era 99.
+export const CART_MAX_QUANTITY = 20;
+const LEGACY_MAX_QUANTITY = 99;
 const TTL = 7 * 24 * 60 * 60 * 1000;
 const validText = (value: unknown, max: number): value is string => typeof value === "string" && value.trim().length > 0 && value.length <= max;
 /** Solo rutas propias o http(s): descarta javascript:, data: y rutas de protocolo relativo. */
@@ -11,12 +13,12 @@ export function safeCartItem(value: unknown): CartItem | null {
   if (!value || typeof value !== "object") return null;
   const v = value as Record<string, unknown>;
   if (!validText(v.productId, 120) || !validText(v.variantSku, 120) || !validText(v.title, 160) || !validText(v.variantLabel, 200)) return null;
-  if (typeof v.quantity !== "number" || !Number.isInteger(v.quantity) || v.quantity < 1 || v.quantity > CART_MAX_QUANTITY) return null;
+  if (typeof v.quantity !== "number" || !Number.isInteger(v.quantity) || v.quantity < 1 || v.quantity > LEGACY_MAX_QUANTITY) return null;
   if (typeof v.unitPrice !== "number" || !Number.isFinite(v.unitPrice) || v.unitPrice < 0 || v.unitPrice > 1000000) return null;
-  if (typeof v.vitalCoinsReward !== "number" || !Number.isInteger(v.vitalCoinsReward) || v.vitalCoinsReward < 0 || v.vitalCoinsReward > 1000000) return null;
+  // vitalCoinsReward (carritos guardados antes de C67) se ignora.
   const image = safeImageUrl(v.image);
   const maxQuantity = typeof v.maxQuantity === "number" && Number.isInteger(v.maxQuantity) && v.maxQuantity >= 1 && v.maxQuantity <= 1000000 ? v.maxQuantity : undefined;
-  return { productId: v.productId, variantSku: v.variantSku, title: v.title, variantLabel: v.variantLabel, unitPrice: v.unitPrice, quantity: v.quantity, vitalCoinsReward: v.vitalCoinsReward, image, ...(maxQuantity ? { maxQuantity } : {}) };
+  return { productId: v.productId, variantSku: v.variantSku, title: v.title, variantLabel: v.variantLabel, unitPrice: v.unitPrice, quantity: Math.min(v.quantity, CART_MAX_QUANTITY), image, ...(maxQuantity ? { maxQuantity } : {}) };
 }
 /** Productos guardados válidos, o null si no hay nada guardado o está dañado o vencido. */
 export function readCartItems(raw: string | null, now = Date.now()): CartItem[] | null {

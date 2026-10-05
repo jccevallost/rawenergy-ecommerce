@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generateVariantMatrix } from "./useProductMatrix";
+import { generateVariantMatrix } from "./variantMatrix";
 
 const sizes = [{ value: 2, unit: "lb" }];
 

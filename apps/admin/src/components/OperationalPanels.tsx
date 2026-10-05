@@ -42,6 +42,10 @@ export function OrdersPanel({ orders, total, status, search, page, dataStatus, o
   onStatus: (id: string, status: OrderStatus) => void;
 }) {
   const leave=useLeaveGuard();const changingView=useRef(false);const [viewVersion,setViewVersion]=useState(0);const [notice,setNotice]=useState("");
+  // Pedidos con código de bienvenida (C63, S08): la cédula solo se valida con su dígito
+  // verificador, así que conviene confirmar por WhatsApp que el celular es de quien compra.
+  const [onlyDiscount, setOnlyDiscount] = useState(false);
+  const shown = onlyDiscount ? orders.filter((order) => order.discount) : orders;
   const changeView=async(change:()=>void)=>{if(changingView.current)return;changingView.current=true;try{if(await leave()){setViewVersion(value=>value+1);change();}}finally{changingView.current=false;}};
   const from = total ? page * ORDERS_PAGE_SIZE + 1 : 0;
   const to = page * ORDERS_PAGE_SIZE + orders.length;
@@ -70,10 +74,11 @@ export function OrdersPanel({ orders, total, status, search, page, dataStatus, o
             {Object.entries(orderStatusLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}
           </select>
         </label>
+        <label className="filter-check"><input type="checkbox" checked={onlyDiscount} onChange={(event) => setOnlyDiscount(event.target.checked)} /> Solo con código de descuento (en esta página)</label>
         {filtered && <button className="filter-clear" onClick={() => void changeView(() => { onStatusFilter(""); onSearch(""); })}>Limpiar filtros</button>}
       </div>
 
-      {!orders.length && (
+      {!shown.length && (
         <div className="empty-state">
           {emptyCopy(
             dataStatus,
@@ -85,14 +90,14 @@ export function OrdersPanel({ orders, total, status, search, page, dataStatus, o
       )}
 
       <div className="orders-list">
-        {orders.map((order) => (
+        {shown.map((order) => (
           <article className="order-card" key={order.id}>
             <header>
               <div><b>{order.orderNumber}</b><span>{order.customer.fullName} - {order.customer.phone}</span></div>
               <strong>{formatMoney(order.total)}</strong>
             </header>
             <p>{order.customer.city}, {order.customer.province} - {order.customer.address}{order.customer.idNumber ? ` · ${order.customer.idType === "PASAPORTE" ? "Pasaporte" : order.customer.idType === "RUC" ? "RUC" : "Cédula"} (factura): ${order.customer.idNumber}` : ""}</p>
-            <small>{shippingLabels[order.shippingMethod]} · Envío {order.shippingFee > 0 ? formatMoney(order.shippingFee) : "gratis"} · {order.discount ? <b className="discount-badge">Descuento {order.discount.code}: −{formatMoney(order.discount.amount)}</b> : null}{order.discount ? " · " : null}{order.paymentMethod === "CASH_ON_DELIVERY" ? <b className="cod-badge">Contra entrega: cobrar al entregar</b> : "Transferencia"}</small>
+            <small>{shippingLabels[order.shippingMethod]} · Envío {order.shippingFee > 0 ? formatMoney(order.shippingFee) : "gratis"} · {order.discount ? <b className="discount-badge" title="Primera compra con código: confirma por WhatsApp que el celular es de quien compra antes de despachar.">Descuento {order.discount.code}: −{formatMoney(order.discount.amount)} · revisar primera compra</b> : null}{order.discount ? " · " : null}{order.paymentMethod === "CASH_ON_DELIVERY" ? <b className="cod-badge">Contra entrega: cobrar al entregar</b> : "Transferencia"}</small>
             {order.paymentReference && <small>Comprobante: {order.paymentReference}</small>}
             <div className="order-items">
               {order.items.map((item) => <span key={`${order.id}-${item.variantSku}`}>{item.quantity}x {item.title} · {item.variantLabel}<small>SKU: {item.variantSku}</small></span>)}

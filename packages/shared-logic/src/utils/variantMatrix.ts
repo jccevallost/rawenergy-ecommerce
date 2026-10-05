@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+// Combinaciones sabor × tamaño del editor de productos. Antes vivía junto a un gancho
+// `useProductMatrix` que nadie usaba (retirado en C67).
 import type { VariantDraft } from "../types";
 
 const slugPart = (value: string) => value.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -39,13 +40,3 @@ export const generateVariantMatrix = (
   }
   return variants;
 };
-
-export const useProductMatrix = (
-  productSlug: string,
-  flavors: string[],
-  sizes: Array<{ value: number; unit: string }>,
-  previous: VariantDraft[] = []
-) => useMemo(
-  () => generateVariantMatrix(productSlug, flavors, sizes, previous),
-  [productSlug, flavors.join("|"), sizes.map((size) => `${size.value}${size.unit}`).join("|"), previous]
-);

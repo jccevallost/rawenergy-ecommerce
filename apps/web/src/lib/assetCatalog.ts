@@ -2,7 +2,8 @@ import { assetManifest } from "virtual:asset-manifest";
 import type { Product } from "@vital-forge/shared-logic";
 
 const imageExtensions = ["webp", "png", "jpg"];
-const logoExtensions = ["png", "svg", "webp"];
+// Logos: vectorial primero, luego WebP y por último PNG (C64). Antes ganaba el PNG aunque hubiera otro formato.
+const logoExtensions = ["svg", "webp", "png"];
 
 export type FeaturedBrand = {
   name: string;
@@ -60,8 +61,17 @@ const productPhotoCandidates = (product?: Product | null) => {
   return assetCandidates("products", [product.slug, slugifyAssetName(product.title)], imageExtensions);
 };
 
+const MEDIA = /\/media\/[a-f0-9]{32}$/;
 /** Miniatura de 360 px que la API genera para cada foto de /media (en listas y tarjetas). */
-export const thumbnail = (url: string) => /\/media\/[a-f0-9]{32}$/.test(url) ? `${url}?size=thumb` : url;
+export const thumbnail = (url: string) => MEDIA.test(url) ? `${url}?size=thumb` : url;
+/**
+ * Tamaños de una foto de la biblioteca para `srcset` (C64): 360, 720 y hasta 1.400 px. El
+ * navegador elige según el ancho mostrado y la densidad de la pantalla.
+ */
+export const mediaSrcSet = (url: string) => {
+  const base = url.replace(/\?size=(thumb|medium)$/, "");
+  return MEDIA.test(base) ? `${base}?size=thumb 360w, ${base}?size=medium 720w, ${base} 1400w` : undefined;
+};
 
 /** Para tarjetas y carriles: miniaturas primero y, si fallan, la foto completa. */
 export const productThumbCandidates = (product?: Product | null) => {

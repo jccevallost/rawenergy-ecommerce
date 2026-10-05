@@ -1,4 +1,5 @@
 import { type CSSProperties, type ReactNode, useState } from "react";
+import { mediaSrcSet } from "../lib/assetCatalog";
 
 type AssetImageProps = {
   candidates: Array<string | undefined | null>;
@@ -7,9 +8,13 @@ type AssetImageProps = {
   loading?: "eager" | "lazy";
   fallback?: ReactNode;
   style?: CSSProperties;
+  /** Ancho mostrado (atributo `sizes`): con él, las fotos de la biblioteca usan `srcset` (C64). */
+  sizes?: string;
+  /** Imagen principal de la vista: se pide antes que el resto (C64). */
+  priority?: boolean;
 };
 
-export function AssetImage({ candidates, alt, className, loading = "lazy", fallback, style }: AssetImageProps) {
+export function AssetImage({ candidates, alt, className, loading = "lazy", fallback, style, sizes, priority }: AssetImageProps) {
   const sources = Array.from(new Set(candidates.filter(Boolean) as string[]));
   const sourceKey = sources.join("|");
   // El intento y la carga se guardan junto a la lista a la que pertenecen: si la
@@ -27,6 +32,9 @@ export function AssetImage({ candidates, alt, className, loading = "lazy", fallb
     <img
       className={`${className ?? ""} ${fadeClass}`.trim()}
       src={source}
+      srcSet={sizes ? mediaSrcSet(source) : undefined}
+      sizes={sizes && mediaSrcSet(source) ? sizes : undefined}
+      fetchPriority={priority ? "high" : undefined}
       alt={alt}
       loading={loading}
       decoding="async"

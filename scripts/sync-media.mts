@@ -23,7 +23,7 @@ type Manifest = {
   variants: Array<{ slug: string; title: string; sku: string; flavor: string; size: { value: number; unit: string }; images: Image[] }>;
 };
 type Variant = { flavor: string; size: { value: number; unit: string }; price: number; compareAtPrice?: number | null; reorderPoint?: number; stock: number; sku: string; images?: Array<{ url: string; alt: string }> };
-type Product = { id: string; slug: string; title: string; brand: string; shortDescription: string; productType: string; nutritionalFacts?: unknown; variants: Variant[]; categories: Array<{ name: string; slug: string }>; goals: Array<{ name: string; slug: string }>; vitalCoinsReward?: number; maxInstallments?: number; hasFreeShipping?: boolean; storeBadges?: string[]; featured?: boolean; revision?: number };
+type Product = { id: string; slug: string; title: string; brand: string; shortDescription: string; ingredients?: string | null; usage?: string | null; warnings?: string | null; productType: string; nutritionalFacts?: unknown; variants: Variant[]; categories: Array<{ name: string; slug: string }>; goals: Array<{ name: string; slug: string }>; featured?: boolean; revision?: number };
 
 const args = process.argv.slice(2);
 const flags = new Set(args.filter(arg => arg.startsWith("--")));
@@ -76,8 +76,8 @@ const payloadOf = (product: Product | (typeof initialCatalog)[number]) => ({
   nutritionalFacts: product.nutritionalFacts ?? null,
   variants: product.variants.map(variant => ({ flavor: variant.flavor, size: { value: variant.size.value, unit: variant.size.unit }, price: variant.price, compareAtPrice: variant.compareAtPrice ?? null, reorderPoint: variant.reorderPoint ?? 5, stock: variant.stock, sku: variant.sku, images: (variant.images ?? []).map(image => ({ url: image.url, alt: image.alt })) })),
   categories: product.categories.map(({ name, slug }) => ({ name, slug })), goals: product.goals.map(({ name, slug }) => ({ name, slug })),
-  vitalCoinsReward: product.vitalCoinsReward ?? 0, maxInstallments: product.maxInstallments ?? 1, hasFreeShipping: product.hasFreeShipping ?? false,
-  storeBadges: product.storeBadges, featured: product.featured ?? false
+  ingredients: product.ingredients ?? "", usage: product.usage ?? "", warnings: product.warnings ?? "",
+  featured: product.featured ?? false
 });
 
 // 0. Con --cargar-catalogo, primero se crean en el destino los productos del

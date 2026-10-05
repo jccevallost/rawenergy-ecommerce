@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CART_STORAGE_KEY, decodeCart, encodeCart, safeCartItem } from "./cartPersistence";
+import { CART_MAX_QUANTITY, CART_STORAGE_KEY, decodeCart, encodeCart, safeCartItem } from "./cartPersistence";
 import { useCartStore } from "./cartStore";
-const item = { productId: "product-a", variantSku: "SAME-SKU", title: "Producto", variantLabel: "300 g", unitPrice: 25, quantity: 1, vitalCoinsReward: 0 };
+const item = { productId: "product-a", variantSku: "SAME-SKU", title: "Producto", variantLabel: "300 g", unitPrice: 25, quantity: 1 };
 beforeEach(() => { useCartStore.setState({ items: [], notice: "", isOpen: false, view: "cart" }); });
 afterEach(() => vi.unstubAllGlobals());
 describe("Carrito persistente defensivo", () => {
@@ -30,13 +30,22 @@ describe("Carrito persistente defensivo", () => {
     useCartStore.getState().removeItem(item.variantSku, "product-a");
     expect(useCartStore.getState().items[0]?.productId).toBe("product-b");
   });
-  it("limita repeticiones a 99 y conserva memoria si localStorage falla", () => {
+  it("limita repeticiones a CART_MAX_QUANTITY y conserva memoria si localStorage falla", () => {
     vi.stubGlobal("localStorage", { setItem() { throw new Error("blocked"); } });
-    useCartStore.getState().addItem({ ...item, quantity: 99 }); useCartStore.getState().addItem(item);
-    expect(useCartStore.getState().items[0]?.quantity).toBe(99);
+    useCartStore.getState().addItem({ ...item, quantity: CART_MAX_QUANTITY }); useCartStore.getState().addItem(item);
+    expect(useCartStore.getState().items[0]?.quantity).toBe(CART_MAX_QUANTITY);
     expect(useCartStore.getState().notice).toContain("No se pudo guardar");
     useCartStore.getState().setQuantity(item.variantSku, NaN, item.productId);
-    expect(useCartStore.getState().items[0]?.quantity).toBe(99);
+    expect(useCartStore.getState().items[0]?.quantity).toBe(CART_MAX_QUANTITY);
+  });
+  it("acepta carritos guardados antes de C67 con el campo de puntos retirado", () => {
+    const restored = safeCartItem({ ...item, vitalCoinsReward: 3 });
+    expect(restored).not.toBeNull();
+    expect(restored).not.toHaveProperty("vitalCoinsReward");
+  });
+  it("un carrito guardado con más unidades que el tope nuevo se recorta, no se pierde", () => {
+    expect(safeCartItem({ ...item, quantity: 35 })?.quantity).toBe(CART_MAX_QUANTITY);
+    expect(safeCartItem({ ...item, quantity: 150 })).toBeNull();
   });
   it("confirmar consume solo lo comprado y conserva lo añadido mientras respondía el servidor", () => {
     useCartStore.getState().addItem(item); useCartStore.getState().addItem(item);

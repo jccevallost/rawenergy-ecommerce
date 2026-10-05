@@ -1,0 +1,5 @@
+# Cómo avisar de un problema de seguridad en RawEnergy EC (RFC 9116, C62).
+# Cambiar Contact por un correo de la tienda cuando exista.
+Contact: https://wa.me/593983368127
+Expires: 2027-10-04T00:00:00.000Z
+Preferred-Languages: es, en

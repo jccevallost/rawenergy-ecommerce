@@ -1,0 +1,18 @@
+# Actualizaciones de dependencias y acciones (C61, S18). Dependabot abre solicitudes
+# de cambio; nada se aplica sin revisarlas y sin que pase el flujo «Verificar».
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # Menores y parches juntos para no llenar el repositorio de solicitudes.
+      menores:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

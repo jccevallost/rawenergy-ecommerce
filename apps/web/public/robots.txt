@@ -1,0 +1,4 @@
+# Tienda RawEnergy EC (C62). La consulta de pedido no aporta a los buscadores.
+User-agent: *
+Allow: /
+Disallow: /pedido

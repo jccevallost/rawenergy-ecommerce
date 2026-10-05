@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
-import type { ProductFilters } from "@vital-forge/shared-logic";
+import { CATALOG_CATEGORIES, type CatalogCategory, type ProductFilters } from "@vital-forge/shared-logic";
 import { goals } from "../lib/goals";
 
 const BRANDS = gql`query CatalogBrands { catalogBrands }`;
@@ -9,11 +9,12 @@ type FiltersProps = { filters: ProductFilters; onChange: (next: ProductFilters, 
 
 export function Filters({ filters, onChange }: FiltersProps) {
   const { data, error, refetch } = useQuery<{ catalogBrands: string[] }>(BRANDS);
+  const types = useQuery<{ catalogCategories: CatalogCategory[] }>(CATALOG_CATEGORIES);
   const [prices, setPrices] = useState({ min: "", max: "" });
   const [priceError, setPriceError] = useState("");
   useEffect(() => { setPrices({ min: filters.minPrice?.toString() ?? "", max: filters.maxPrice?.toString() ?? "" }); setPriceError(""); }, [filters.minPrice, filters.maxPrice]);
 
-  const toggle = (key: "brands" | "goals", value: string) => {
+  const toggle = (key: "brands" | "categories" | "goals", value: string) => {
     const current = filters[key] ?? [];
     const next = current.includes(value) ? current.filter(item => item !== value) : [...current, value];
     onChange({ ...filters, [key]: next.length ? next : undefined });
@@ -33,6 +34,12 @@ export function Filters({ filters, onChange }: FiltersProps) {
       <fieldset className="filter-group">
         <legend>Disponibilidad</legend>
         <label className="check"><input type="checkbox" checked={!!filters.inStock} onChange={event => onChange({ ...filters, inStock: event.target.checked || undefined })} /><span>Solo con existencias</span></label>
+      </fieldset>
+      {/* Tipo de producto (C65, V16): así piensa la mayoría («busco creatina»), antes que en el objetivo. */}
+      <fieldset className="filter-group">
+        <legend>Tipo de producto</legend>
+        {types.error && <button type="button" className="btn btn-link" onClick={() => void types.refetch()}>No se cargaron los tipos. Reintentar</button>}
+        {types.data?.catalogCategories.map(category => <label className="check" key={category.slug}><input type="checkbox" checked={filters.categories?.includes(category.slug) ?? false} onChange={() => toggle("categories", category.slug)} /><span>{category.name} <small className="muted">({category.count})</small></span></label>)}
       </fieldset>
       <fieldset className="filter-group">
         <legend>Objetivo</legend>

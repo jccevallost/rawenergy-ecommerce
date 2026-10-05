@@ -1,12 +1,18 @@
 {
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/assets/*", "/*.{ico,png,jpg,jpeg,webp,avif,gif,svg,txt,xml,json,webmanifest,js,css,map,woff,woff2}"]
+    "exclude": [
+      "/assets/*",
+      "/*.{ico,png,jpg,jpeg,webp,avif,gif,svg,txt,xml,json,webmanifest,js,css,map,woff,woff2}",
+      "/.well-known/*"
+    ]
   },
   "routes": [
     {
       "route": "/assets/*.{js,css,woff,woff2}",
-      "headers": { "Cache-Control": "public, max-age=31536000, immutable" }
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      }
     }
   ],
   "globalHeaders": {
@@ -15,6 +21,8 @@
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "no-referrer",
     "X-Robots-Tag": "noindex, nofollow",
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()"
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
+    "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob: https: __API_ORIGIN__; connect-src 'self' __API_ORIGIN__; frame-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; manifest-src 'self'; worker-src 'self'",
+    "Cross-Origin-Opener-Policy": "same-origin"
   }
 }

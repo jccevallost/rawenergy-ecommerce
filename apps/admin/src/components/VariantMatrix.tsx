@@ -1,7 +1,6 @@
 import { ImagePlus, Loader2, PackageOpen } from "lucide-react";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import type { VariantDraft } from "@vital-forge/shared-logic";
-import { formatMoney } from "@vital-forge/ui-core";
 import { useConfirm } from "./common/ConfirmDialog";
 import { useImageQueue } from "./ImageUploadQueue";
 import { thumbnailUrl } from "../lib/uploadImage";
@@ -10,7 +9,7 @@ const Library = lazy(() => import("./SystemPanels").then((m) => ({ default: m.Me
 const SIZE = "size:";
 const ACCEPT = "image/png,image/jpeg,image/webp,image/avif,image/gif,image/tiff";
 
-export function VariantMatrix({ variants, onChange, installments, title = "", onBusyChange, onRemove, stockReadonly = false, disabled = false }: { variants: VariantDraft[]; onChange: (variants: VariantDraft[]) => void; installments: number; title?: string; onBusyChange?: (busy: boolean) => void; onRemove?: (index: number) => void; stockReadonly?: boolean; disabled?: boolean }) {
+export function VariantMatrix({ variants, onChange, title = "", onBusyChange, onRemove, stockReadonly = false, disabled = false }: { variants: VariantDraft[]; onChange: (variants: VariantDraft[]) => void; title?: string; onBusyChange?: (busy: boolean) => void; onRemove?: (index: number) => void; stockReadonly?: boolean; disabled?: boolean }) {
   const confirm = useConfirm();
   const [busy, setBusy] = useState(false);
   const [libraryBusy, setLibraryBusy] = useState(false);
@@ -71,13 +70,12 @@ export function VariantMatrix({ variants, onChange, installments, title = "", on
     {uploads.view}
     {error && <div className="matrix-error" role="alert">{error}</div>}
     <fieldset disabled={locked} className="matrix-fieldset"><div className="filter-bar"><label>Precio para todas las variantes<input type="number" min="0.01" step=".01" value={bulkPrice} onChange={(e) => setBulkPrice(e.target.value)} /></label><button type="button" disabled={!(Number(bulkPrice) > 0)} onClick={() => onChange(variants.map((v) => ({ ...v, price: Number(bulkPrice) })))}>Aplicar precio</button><small>{bySize ? "Fotos: súbelas por tamaño y se usan en todos sus sabores. La primera es la portada." : "Fotos: arrastra para ordenar o mover. La primera es la portada."}</small></div>
-    <table className="matrix"><thead><tr><th>Variante</th><th>SKU</th><th>Precio</th><th>Antes</th><th>Stock / mínimo</th><th>Cuota</th><th>Fotos</th></tr></thead><tbody>{variants.map((v, index) => <tr key={`${v.flavor}-${v.size.value}-${v.size.unit}`} className={v.price > 0 ? "" : "variant-draft"}>
+    <table className="matrix"><thead><tr><th>Variante</th><th>SKU</th><th>Precio</th><th>Antes</th><th>Stock / mínimo</th><th>Fotos</th></tr></thead><tbody>{variants.map((v, index) => <tr key={`${v.flavor}-${v.size.value}-${v.size.unit}`} className={v.price > 0 ? "" : "variant-draft"}>
       <td><b>{v.flavor}</b>{onRemove && <button type="button" onClick={async () => { if (await confirm({ title: "Quitar variante", message: `Quitar ${v.sku} de esta ficha. El cambio se aplica al guardar.`, danger: true, confirmLabel: "Quitar" })) onRemove(index); }}>Quitar variante</button>}<small>{v.size.value} {v.size.unit}</small>{v.price <= 0 && <em className="variant-note">Completa el precio</em>}</td>
       <td><input aria-label={`SKU ${v.flavor} ${v.size.value} ${v.size.unit}`} className="sku" maxLength={80} value={v.sku} onChange={(e) => update(index, { sku: e.target.value })} /></td>
       <td><input aria-label={`Precio ${v.sku}`} type="number" min="0" step=".01" value={v.price || ""} onChange={(e) => update(index, { price: Number(e.target.value) })} /></td>
       <td><input aria-label={`Precio anterior ${v.sku}`} type="number" min="0" step=".01" value={v.compareAtPrice ?? ""} onChange={(e) => update(index, { compareAtPrice: e.target.value ? Number(e.target.value) : null })} /></td>
       <td><input disabled={stockReadonly} aria-label={`Stock ${v.sku}`} className="stock" type="number" min="0" step="1" value={v.stock} onChange={(e) => update(index, { stock: Number(e.target.value) })} /><input aria-label={`Mínimo ${v.sku}`} title="Stock mínimo" className="stock" type="number" min="0" step="1" value={v.reorderPoint ?? 5} onChange={(e) => update(index, { reorderPoint: Number(e.target.value) })} /></td>
-      <td><span className="installment">{installments} × {formatMoney(v.price / installments || 0)}</span></td>
       <td><label className="drop-cell" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files.length) void addImages(index, e.dataTransfer.files); }}><input type="file" accept={ACCEPT} multiple disabled={busy} onChange={(e) => { void addImages(index, e.target.files); e.target.value = ""; }} />{busy ? <Loader2 size={17} className="spin" /> : <ImagePlus size={17} />}<span>{v.images.length}/8 · Subir</span></label><button type="button" onClick={() => setLibrarySku(v.sku)}>Biblioteca</button></td>
     </tr>)}</tbody></table>
 

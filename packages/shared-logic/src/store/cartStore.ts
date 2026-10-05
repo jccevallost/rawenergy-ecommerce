@@ -18,11 +18,11 @@ type CartState = {
   clear: () => void;
   consume: (purchased: CartItem[]) => void;
 };
-/** Tope por línea: 99 o las existencias conocidas al agregar, lo que sea menor. */
+/** Tope por línea: CART_MAX_QUANTITY o las existencias conocidas al agregar, lo que sea menor. */
 export const lineCap = (item: Pick<CartItem, "maxQuantity">) => Math.min(CART_MAX_QUANTITY, item.maxQuantity ?? CART_MAX_QUANTITY);
 const capNotice = (cap: number) => cap < CART_MAX_QUANTITY
   ? `Solo ${cap === 1 ? "queda 1 unidad disponible" : `quedan ${cap} unidades disponibles`} de esta presentación.`
-  : "Máximo 99 unidades por presentación. La disponibilidad se confirma al continuar.";
+  : `Máximo ${CART_MAX_QUANTITY} unidades por presentación; para más, escríbenos por WhatsApp.`;
 function restore() {
   try { return decodeCart(globalThis.localStorage?.getItem(CART_STORAGE_KEY) ?? null); }
   catch { return { items: [], notice: "El navegador no permite guardar el carrito. Se conservará mientras esta página siga abierta." }; }
@@ -65,7 +65,7 @@ export const useCartStore = create<CartState>((set) => ({
   }),
   removeItem: (sku, id) => set(state => { const base = latest(state.items); return save(base.items.filter(item => item.variantSku !== sku || item.productId !== id), withTabNotice(base, "Producto eliminado del carrito.")); }),
   setQuantity: (sku, quantity, id) => set(state => {
-    if (!Number.isInteger(quantity) || quantity < 0 || quantity > CART_MAX_QUANTITY) return { notice: "Usa una cantidad entera entre 1 y 99." };
+    if (!Number.isInteger(quantity) || quantity < 0 || quantity > CART_MAX_QUANTITY) return { notice: `Usa una cantidad entera entre 1 y ${CART_MAX_QUANTITY}.` };
     const base = latest(state.items);
     const line = base.items.find(item => item.variantSku === sku && item.productId === id);
     if (line && quantity > lineCap(line)) return { items: base.items, notice: withTabNotice(base, capNotice(lineCap(line))) };
@@ -96,6 +96,5 @@ if (typeof window !== "undefined") {
 }
 export const calculateLocalCartTotals = (items: CartItem[], threshold = 70): CartTotals => {
   const subtotal = Math.round(items.reduce((sum, item) => sum + Math.round(item.unitPrice * item.quantity * 100), 0)) / 100;
-  const earnedCoins = items.reduce((sum, item) => sum + item.vitalCoinsReward * item.quantity, 0);
-  return { subtotal, discount: 0, shippingFee: 0, total: subtotal, earnedCoins, freeShippingThreshold: threshold, amountUntilFreeShipping: Math.max(0, Math.round((threshold - subtotal) * 100) / 100), hasFreeShipping: subtotal >= threshold };
+  return { subtotal, discount: 0, shippingFee: 0, total: subtotal, freeShippingThreshold: threshold, amountUntilFreeShipping: Math.max(0, Math.round((threshold - subtotal) * 100) / 100), hasFreeShipping: subtotal >= threshold };
 };

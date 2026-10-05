@@ -3,13 +3,18 @@ import { updateProductIdentity } from "./productIdentity";
 import { thumbnailUrl } from "../../lib/uploadImage";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, Cloud, Combine, Sparkles, Upload, Package, Plus, Edit3, Trash2, RotateCcw, Copy, Star } from "lucide-react";
-import { generateVariantMatrix, type Product, type VariantDraft, useUpsertProduct } from "@vital-forge/shared-logic";
+import { useQuery } from "@apollo/client";
+import { similarBrand } from "./brandHint";
+import { generateVariantMatrix, type Product, TAXONOMY, type TaxonomyOverview, type VariantDraft, useUpsertProduct } from "@vital-forge/shared-logic";
+
+// Formatos de tamaño más usados: misma unidad en todo el catálogo («porciones», no «medidas»).
+const sizeSuggestions = ["1 lb", "2 lb", "5 lb", "300 g", "600 g", "1 kg", "2 kg", "30 porciones", "60 cápsulas"];
 import { formatMoney } from "@vital-forge/ui-core";
 import { TagEditor } from "../../components/TagEditor";
 import { VariantMatrix } from "../../components/VariantMatrix";
 import { useConfirm } from "../../components/common/ConfirmDialog";
 import { productDraftKey, readDraft, removeDraft, writeDraft, useAutoDraft } from "../product/useAutoDraft";
-import { initial, isProductForm, listFromText, normalizeForm, parseSize, productFormToPayload, productToForm, recoverProductDraft, slugify, validateProductForm, type FormState } from "./productForm";
+import { initial, isProductForm, normalizeForm, parseSize, productFormToPayload, productToForm, recoverProductDraft, slugify, validateProductForm, type FormState } from "./productForm";
 type DataStatus = "ok" | "loading" | "error";
 const emptyCopy = (status: DataStatus, ok: string, loading: string, error: string) => status === "error" ? error : status === "loading" ? loading : ok;
 
@@ -49,6 +54,9 @@ export function ProductEditor({ ownerId, product, onDone, onCancel, onDirtyChang
 
 
   const change = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((current) => ({ ...current, [key]: value }));
+  const taxonomy = useQuery<{ taxonomy: TaxonomyOverview }>(TAXONOMY);
+  const brandNames = taxonomy.data?.taxonomy.brands.map((brand) => brand.name) ?? [];
+  const brandHint = similarBrand(form.brand, brandNames);
   const toggleGoal = (goal: string) => setForm((current) => {
     const exists = current.goals.includes(goal);
     const goals = exists ? current.goals.filter((item) => item !== goal) : [...current.goals, goal];
@@ -99,10 +107,16 @@ export function ProductEditor({ ownerId, product, onDone, onCancel, onDirtyChang
             <header><i>01</i><div><h2>Datos del producto</h2><p>La información que verá el cliente primero.</p></div></header>
             <div className="fields two">
               <label><span>Nombre del producto</span><input maxLength={120} aria-invalid={!!blocked && form.title.trim().length<3} value={form.title} onChange={(event) => updateTitle(event.target.value)} placeholder="Ej. Gold Standard 100% Whey" /></label>
-              <label><span>Marca</span><input maxLength={80} aria-invalid={!!blocked && form.brand.trim().length<2} value={form.brand} onChange={(event) => change("brand", event.target.value)} placeholder="Ej. Raw Nutrition" /></label>
+              <label><span>Marca</span><input maxLength={80} list="marcas-existentes" aria-invalid={!!blocked && form.brand.trim().length<2} aria-describedby={brandHint ? "marca-parecida" : undefined} value={form.brand} onChange={(event) => change("brand", event.target.value)} placeholder="Ej. Raw Nutrition" />
+                <datalist id="marcas-existentes">{brandNames.map((name) => <option key={name} value={name} />)}</datalist>
+                {brandHint && <small id="marca-parecida" className="field-warning">Ya existe «{brandHint}». <button type="button" className="link-button" onClick={() => change("brand", brandHint)}>Usar «{brandHint}»</button> para no duplicar la marca.</small>}</label>
               <label hidden={!advanced}><span>Identificador del enlace</span><div className="slug"><small>rawenergy.ec/p/</small><input maxLength={160} value={form.slug} onChange={(event) => change("slug", slugify(event.target.value))} /></div></label>
               <label><span>Tipo de producto</span><select value={form.productType} onChange={(event) => change("productType", event.target.value as FormState["productType"])}><option value="SUPPLEMENT">Suplemento deportivo</option><option value="APPAREL">Ropa deportiva</option></select></label>
               <label className="full"><span>Descripción corta</span><textarea aria-invalid={!!blocked && form.description.trim().length<10} maxLength={320} value={form.description} onChange={(event) => change("description", event.target.value)} placeholder="Resume el beneficio principal, el uso y por que comprarlo en RawEnergy EC." /><small>{form.description.length}/320</small></label>
+              {/* Datos de la etiqueta (C66, V19): se muestran en la ficha solo si se cargan. No se inventan. */}
+              <label className="full"><span>Ingredientes <small>según la etiqueta (opcional)</small></span><textarea maxLength={1500} value={form.ingredients ?? ""} onChange={(event) => change("ingredients", event.target.value)} placeholder="Ej. Proteína de suero aislada, saborizante natural…" /><small>{(form.ingredients ?? "").length}/1500</small></label>
+              <label className="full"><span>Modo de uso <small>según la etiqueta (opcional)</small></span><textarea maxLength={1000} value={form.usage ?? ""} onChange={(event) => change("usage", event.target.value)} placeholder="Ej. Mezcla 1 medida con 200 ml de agua después de entrenar." /><small>{(form.usage ?? "").length}/1000</small></label>
+              <label className="full"><span>Advertencias <small>según la etiqueta (opcional)</small></span><textarea maxLength={1000} value={form.warnings ?? ""} onChange={(event) => change("warnings", event.target.value)} placeholder="Ej. Contiene cafeína. No apto para menores de 18 años." /><small>{(form.warnings ?? "").length}/1000</small></label>
             </div>
           </section>
 
@@ -121,22 +135,23 @@ export function ProductEditor({ ownerId, product, onDone, onCancel, onDirtyChang
 
           <section className="panel matrix-panel">
             <header><i>{form.productType === "SUPPLEMENT" ? "03" : "02"}</i><div><h2>Variantes y fotografías</h2><p>Combina opciones. La tabla hace el trabajo pesado.</p></div><span className="matrix-count">{form.variants.length} variantes</span></header>
-            <div className="option-editors"><TagEditor label={form.productType === "APPAREL" ? "Colores" : "Sabores"} values={form.flavors} onChange={(value) => change("flavors", value)} placeholder="Agregar opción" /><b>×</b><TagEditor label="Tamaños" values={form.sizes} onChange={(value) => change("sizes", value)} placeholder="Ej. 5 lb" /></div>
+            <div className="option-editors"><TagEditor label={form.productType === "APPAREL" ? "Colores" : "Sabores"} values={form.flavors} onChange={(value) => change("flavors", value)} placeholder="Agregar opción" /><b>×</b><TagEditor label="Tamaños" values={form.sizes} onChange={(value) => change("sizes", value)} placeholder="Ej. 5 lb" suggestions={sizeSuggestions} /></div>
             <div className="variant-choice"><p>La tabla contiene solo las variantes que vas a vender. Agrega combinaciones cuando las necesites.</p><button type="button" onClick={async () => {
               const added=generated.filter(v=>!form.variants.some(old=>old.flavor===v.flavor && old.size.value===v.size.value && old.size.unit===v.size.unit));
               if (!added.length) { setBlocked("Agrega una opción o tamaño nuevo para generar más combinaciones."); return; }
               if (form.variants.length+added.length>120 || added.some(v=>!v.flavor.trim() || v.flavor.trim().length>80 || !Number.isFinite(v.size.value) || v.size.value<=0 || !v.size.unit.trim() || v.size.unit.trim().length>12)) { setBlocked("Revisa las opciones y tamaños: usa cantidades positivas (por ejemplo, 2 lb o 1,5 kg), unidades de hasta 12 caracteres y un máximo de 120 variantes."); return; }
               if (await confirm({ title: "Agregar combinaciones", message: `Se agregarán ${added.length} combinaciones. Las variantes existentes conservarán sus datos.`, confirmLabel: "Agregar" })) { setBlocked(""); change("variants", [...form.variants, ...added]); }
             }}>Generar combinaciones</button></div>
-            <VariantMatrix disabled={loading || saved || !!pendingDraft} stockReadonly={!canManageStock} onRemove={(index) => change("variants", form.variants.filter((_, i) => i !== index))} onBusyChange={setUploading} variants={form.variants} onChange={(variants) => change("variants", variants)} installments={form.installments} title={form.title} />
+            <VariantMatrix disabled={loading || saved || !!pendingDraft} stockReadonly={!canManageStock} onRemove={(index) => change("variants", form.variants.filter((_, i) => i !== index))} onBusyChange={setUploading} variants={form.variants} onChange={(variants) => change("variants", variants)} title={form.title} />
           </section>
 
           <section className="panel">
             <header><i>{form.productType === "SUPPLEMENT" ? "04" : "03"}</i><div><h2>Categorías y beneficios</h2><p>Organiza el producto y configura sus beneficios.</p></div></header>
             <div className="fields two">
-              <label><span>Categorías <small>separadas por coma</small></span><input aria-invalid={!!blocked && !form.categories.trim()} value={form.categories} onChange={(event) => change("categories", event.target.value)} /></label>
+              <label><span>Categorías <small>separadas por coma</small></span><input aria-invalid={!!blocked && !form.categories.trim()} aria-describedby="categorias-existentes" value={form.categories} onChange={(event) => change("categories", event.target.value)} />
+                {!!taxonomy.data?.taxonomy.categories.length && <small id="categorias-existentes">Existentes: {taxonomy.data.taxonomy.categories.map((category) => category.name).join(", ")}. Escríbelas igual para no crear tipos repetidos.</small>}</label>
               <div className="field-block full">
-                <TagEditor label="Objetivos" values={form.goals} onChange={(value) => change("goals", value)} placeholder="Agregar objetivo" />
+                <TagEditor label="Objetivos" values={form.goals} onChange={(value) => change("goals", value)} placeholder="Agregar objetivo" suggestions={taxonomy.data?.taxonomy.goals.map((goal) => goal.name)} />
                 <span>Objetivos del cliente <small>elige uno o varios</small></span>
                 <div className="goal-picker">
                   {goalOptions.map((goal) => (
@@ -147,11 +162,7 @@ export function ProductEditor({ ownerId, product, onDone, onCancel, onDirtyChang
                   ))}
                 </div>
               </div>
-              <label hidden={!advanced}><span>Energy Points por unidad</span><input type="number" min="0" max="2147483647" step="1" value={form.coins} onChange={(event) => change("coins", Number(event.target.value))} /></label>
-              <label hidden={!advanced}><span>Máximo de cuotas</span><select value={form.installments} onChange={(event) => change("installments", Number(event.target.value))}>{Array.from({length:24},(_,index)=>index+1).map((value) => <option key={value} value={value}>{value} cuotas</option>)}</select></label>
-              <label hidden={!advanced} className="full"><span>Mensajes comerciales <small>separados por coma</small></span><textarea maxLength={260} value={form.storeBadges} onChange={(event) => change("storeBadges", event.target.value)} placeholder="Express 4h Quito y Valles, Gratis en ordenes seleccionadas, Producto original asegurado" /><small>{form.storeBadges.length}/260</small></label>
               <label className="switch-row"><span><b>Destacado en tienda</b><small>Aparece primero en la experiencia cliente</small></span><input type="checkbox" checked={form.featured} onChange={(event) => change("featured", event.target.checked)} /></label>
-              <label className="switch-row"><span><b>Envío gratis directo</b><small>Úsalo para ordenes o productos seleccionados</small></span><input type="checkbox" checked={form.freeShipping} onChange={(event) => change("freeShipping", event.target.checked)} /></label>
             </div>
           </section>
         </div>
@@ -163,10 +174,8 @@ export function ProductEditor({ ownerId, product, onDone, onCancel, onDirtyChang
             <small>{form.brand || "TU MARCA"}</small>
             <h3>{form.title || "Nombre del producto"}</h3>
             <p>{form.description || "Tu descripción aparecerá aquí mientras completas el producto."}</p>
-            <div className="summary-badges">{listFromText(form.storeBadges).slice(0, 3).map((badge) => <span key={badge}>{badge}</span>)}</div>
             <strong>{priceRange.min === priceRange.max ? formatMoney(priceRange.min) : `Desde ${formatMoney(priceRange.min)}`}</strong>
-            <em>en {form.installments} cuotas de {formatMoney(priceRange.min / form.installments || 0)}</em>
-            <div className="summary-stats"><span><b>{form.variants.length}</b>Variantes</span><span><b>{form.variants.reduce((sum, variant) => sum + variant.stock, 0)}</b>Unidades</span><span><b>+{form.coins}</b>Points</span></div>
+            <div className="summary-stats"><span><b>{form.variants.length}</b>Variantes</span><span><b>{form.variants.reduce((sum, variant) => sum + variant.stock, 0)}</b>Unidades</span></div>
           </div>
           <div className="tip"><Sparkles /><div><b>Consejo RawEnergy</b><p>Incluye frente, etiqueta y presentación. Usa la primera foto como portada y ordena las demás desde la galería.</p></div></div>
         </aside>

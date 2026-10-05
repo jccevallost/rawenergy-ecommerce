@@ -1,12 +1,30 @@
 {
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/assets/*", "/*.{ico,png,jpg,jpeg,webp,avif,gif,svg,txt,xml,json,webmanifest,js,css,map,woff,woff2}"]
+    "exclude": [
+      "/assets/*",
+      "/*.{ico,png,jpg,jpeg,webp,avif,gif,svg,txt,xml,json,webmanifest,js,css,map,woff,woff2}",
+      "/.well-known/*"
+    ]
   },
   "routes": [
     {
       "route": "/assets/*.{js,css,woff,woff2}",
-      "headers": { "Cache-Control": "public, max-age=31536000, immutable" }
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      }
+    },
+    {
+      "route": "/assets/brands/*",
+      "headers": {
+        "Cache-Control": "public, max-age=86400"
+      }
+    },
+    {
+      "route": "/assets/store/*",
+      "headers": {
+        "Cache-Control": "public, max-age=86400"
+      }
     }
   ],
   "globalHeaders": {
@@ -14,7 +32,9 @@
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "strict-origin-when-cross-origin",
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()"
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
+    "Content-Security-Policy": "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; font-src 'self'; img-src 'self' data: blob: https: __API_ORIGIN__; connect-src 'self' __API_ORIGIN__; frame-src https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; manifest-src 'self'; worker-src 'self'",
+    "Cross-Origin-Opener-Policy": "same-origin"
   },
   "mimeTypes": {
     ".webmanifest": "application/manifest+json"

@@ -92,7 +92,7 @@ function Privacy({ legal }: { legal?: StoreLegal }) {
       <li><b>Autoridades</b>, cuando la ley lo exija.</li>
     </ul>
     <h2>5. Cuánto tiempo los conservamos</h2>
-    <p>Los datos del pedido se conservan mientras sean necesarios para la compra, la atención de reclamos y las obligaciones contables y tributarias. Los registros de seguridad se conservan el tiempo necesario para investigar incidentes.</p>
+    <p>Los datos del pedido se conservan mientras sean necesarios para la compra, la atención de reclamos y las obligaciones contables y tributarias. Los registros de seguridad y de auditoría (quién hizo cada cambio, desde qué conexión y con qué datos) se borran automáticamente a los 12 meses. Los avisos de pedido enviados se borran a los 30 días.</p>
     <h2>6. Qué se guarda en tu navegador</h2>
     <p>Para que la tienda funcione sin crear cuenta guardamos en tu propio navegador (almacenamiento local): el carrito durante 7 días, los productos vistos recientemente y el número de tu último pedido. No guardamos ahí tu nombre, teléfono, dirección ni datos de pago. Si inicias sesión, se guarda la sesión hasta que la cierres o caduque. No usamos cookies de publicidad ni de seguimiento de terceros.</p>
     <h2>7. Tus derechos</h2>
