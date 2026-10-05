@@ -16,22 +16,22 @@
     "@apollo/server": "^5.0.0",
     "@as-integrations/express5": "^1.1.2",
     "cors": "^2.8.5",
-    "dotenv": "^16.5.0",
+    "dotenv": "^18.0.5",
     "express": "^5.1.0",
     "express-rate-limit": "^7.5.0",
     "graphql": "^16.11.0",
     "graphql-depth-limit": "^1.1.0",
     "mongoose": "^8.15.1",
     "nodemailer": "^10.0.14",
-    "sharp": "^0.35.4",
+    "sharp": "^0.35.5",
     "zod": "^3.25.51"
   },
   "devDependencies": {
     "@types/cors": "^2.8.18",
     "@types/express": "^5.0.2",
     "@types/graphql-depth-limit": "^1.1.6",
-    "@types/nodemailer": "^8.0.1",
-    "tsx": "^4.19.4",
-    "vitest": "^4.1.11"
+    "@types/nodemailer": "^8.0.2",
+    "tsx": "^4.23.15",
+    "vitest": "^5.0.3"
   }
 }

@@ -8,6 +8,24 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    ignore:
+      # Versiones mayores que hoy no se pueden instalar (C73). Quitar la regla al hacer el salto:
+      # graphql 17 no lo admiten Apollo Server 5 (^16.11) ni Apollo Client 3 (^15 || ^16).
+      - dependency-name: graphql
+        update-types: ["version-update:semver-major"]
+      # @vitejs/plugin-react 6 exige Vite 8; se sube junto con Vite.
+      - dependency-name: "@vitejs/plugin-react"
+        update-types: ["version-update:semver-major"]
+      # React 19.3 suma 8,6 KB gzip al JavaScript inicial de la tienda (de 146,9 a 155,5 KB; meta 120 KB):
+      # se queda en 19.2.x, que sigue recibiendo parches. Revisar al trabajar el tamaño inicial (V15).
+      - dependency-name: react
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: react-dom
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "@types/react-dom"
+        update-types: ["version-update:semver-minor"]
     groups:
       # Menores y parches juntos para no llenar el repositorio de solicitudes.
       menores:
