@@ -79,7 +79,8 @@ describe("Acceso y bloqueo de cuentas (S03, S07)", () => {
   it("calcula scrypt también cuando la cuenta no existe", async () => {
     const verify = vi.spyOn(authService, "verifyPassword");
     await expect(authService.login({ email: "no-existe@example.test", password: "cualquier-cosa" })).rejects.toThrow(/incorrectos/);
-    expect(verify).toHaveBeenCalledTimes(1);
+    // Solo las llamadas de esta prueba: otra que siga en curso también puede llamar a verifyPassword.
+    expect(verify.mock.calls.filter(([password]) => password === "cualquier-cosa")).toHaveLength(1);
     verify.mockRestore();
   });
 
