@@ -13,7 +13,7 @@
     "@apollo/client": "^3.13.8",
     "@vital-forge/shared-logic": "*",
     "@vital-forge/ui-core": "*",
-    "graphql": "^16.11.0",
+    "graphql": "^17.0.2",
     "lucide-react": "^0.511.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
