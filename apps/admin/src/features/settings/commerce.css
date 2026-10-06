@@ -35,5 +35,6 @@
 .cod-pending label { display: grid; gap: 5px; font-size: 12px; font-weight: 700; }
 .cod-pending input { min-height: 38px; padding: 8px 10px; border: 1px solid #7a8471; border-radius: 8px; font-size: 14px; font-weight: 400; }
 .cod-pending .publish { justify-self: start; min-height: 40px; padding: 0 16px; border-radius: 8px; font-weight: 700; }
+.cod-pending .cod-chat { justify-self: start; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border: 1px solid #1c6b3a; border-radius: 8px; background: white; color: #14532d; font-weight: 700; text-decoration: none; }
 .cod-confirmed { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; font-size: 13px; color: #2d6a1e; }
 .discount-badge { color: #2f6b1f; }

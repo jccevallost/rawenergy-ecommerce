@@ -76,7 +76,7 @@ export function MyOrdersDialog({ email, onClose }: { email: string; onClose: () 
               </div>
               <small>{formatDate(order.createdAt)} · {shippingLabels[order.shippingMethod]} · {paymentLabels[order.paymentMethod]}</small>
               {order.status === "PENDING_PAYMENT" && order.paymentMethod !== "CASH_ON_DELIVERY" && order.createdAt && <p className="order-deadline">Paga antes del {ecuadorDateTime(new Date(Date.parse(order.createdAt) + hours * 3600000).toISOString())}; después se cancela automáticamente.{whatsapp && <> <a href={whatsappHref(whatsapp, `Hola RawEnergy, envío el comprobante del pedido ${order.orderNumber} por ${formatMoney(order.total)}.`)} target="_blank" rel="noopener noreferrer">Enviar comprobante por WhatsApp</a></>}</p>}
-              {order.status === "PENDING_PAYMENT" && order.paymentMethod === "CASH_ON_DELIVERY" && !order.confirmedAt && order.createdAt && <p className="order-deadline">Confírmalo por WhatsApp antes del {ecuadorDateTime(new Date(Date.parse(order.createdAt) + (info?.checkoutInfo.cashOnDelivery.confirmHours ?? 4) * 3600000).toISOString())}; si no, se cancela automáticamente.</p>}
+              {order.status === "PENDING_PAYMENT" && order.paymentMethod === "CASH_ON_DELIVERY" && !order.confirmedAt && order.createdAt && <p className="order-deadline">{whatsapp ? "Confírmalo por WhatsApp" : "Te contactamos para confirmarlo"} antes del {ecuadorDateTime(new Date(Date.parse(order.createdAt) + (info?.checkoutInfo.cashOnDelivery.confirmHours ?? 4) * 3600000).toISOString())}; si no, se cancela automáticamente.</p>}
               <ul className="order-products">
                 {order.items.map((item) => (
                   <li key={`${order.id}-${item.variantSku}`}>

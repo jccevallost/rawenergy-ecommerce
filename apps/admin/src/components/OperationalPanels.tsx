@@ -1,10 +1,11 @@
 import { useLeaveGuard } from "./common/UnsavedChanges";
 import { useRef, useState } from "react";
 import { OrderOperations } from "./OrderOperations";
-import { Activity, CreditCard, Database, Mail, Package, Send, ShieldCheck, Truck, Search, Settings } from "lucide-react";
+import { Activity, CreditCard, Database, Mail, MessageCircle, Package, Send, ShieldCheck, Truck, Search, Settings } from "lucide-react";
 import { CommercePanel } from "../features/settings/CommercePanel";
 import { NotificationsPanel } from "../features/settings/NotificationsPanel";
 import { CashOnDeliveryConfirm } from "./CashOnDeliveryConfirm";
+import { customerMessage, customerWhatsappHref } from "../lib/whatsapp";
 import { formatMoney } from "@vital-forge/ui-core";
 import type { Order, OrderStatus, StoreSettings } from "@vital-forge/shared-logic";
 type DataStatus = "ok" | "loading" | "error";
@@ -109,7 +110,7 @@ export function OrdersPanel({ orders, total, status, search, page, dataStatus, o
                 {[order.status, ...(order.allowedNextStatuses ?? [])].map(value => <option value={value} key={value}>{orderStatusLabels[value]}</option>)}
               </select>
             </label>
-            <div className="row-actions">{!readonly && <button onClick={() => onEdit?.(order)}>Editar datos</button>}{onHistory && <button onClick={() => onHistory(order.id)}>Historial</button>}</div>
+            <div className="row-actions">{!readonly && <button onClick={() => onEdit?.(order)}>Editar datos</button>}{!readonly && !awaitingConfirmation(order) && <CustomerChat order={order} />}{onHistory && <button onClick={() => onHistory(order.id)}>Historial</button>}</div>
             <OrderOperations key={`${order.id}:${viewVersion}`} order={order} readonly={readonly} onNotice={setNotice}/>
           </article>
         ))}
@@ -202,4 +203,11 @@ export function SettingsPanel({ settings, adminEmail, graphqlUrl, dataStatus }: 
       <CommercePanel />
     </section>
   );
+}
+
+// Contra entrega sin confirmar ya tiene su botón en el bloque de confirmación (C74).
+const awaitingConfirmation = (order: Order) => order.paymentMethod === "CASH_ON_DELIVERY" && order.status === "PENDING_PAYMENT" && !order.confirmedAt;
+function CustomerChat({ order }: { order: Order }) {
+  const href = customerWhatsappHref(order.customer.phone, customerMessage(order));
+  return href ? <a href={href} target="_blank" rel="noopener noreferrer"><MessageCircle aria-hidden="true" /> WhatsApp del cliente</a> : null;
 }

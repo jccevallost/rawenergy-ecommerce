@@ -2,6 +2,7 @@ import { useApolloClient, useMutation, useQuery } from "@apollo/client";
 import { useRef, useState } from "react";
 import { MapPin, MessageCircle } from "lucide-react";
 import { CHECKOUT_INFO, CONFIRM_CASH_ON_DELIVERY, type CheckoutInfo, type Order } from "@vital-forge/shared-logic";
+import { customerMessage, customerWhatsappHref } from "../lib/whatsapp";
 import "../features/settings/commerce.css";
 
 const when = (value: string | Date) => new Date(value).toLocaleString("es-EC", { dateStyle: "short", timeStyle: "short", timeZone: "America/Guayaquil" });
@@ -40,10 +41,13 @@ export function CashOnDeliveryConfirm({ order, readonly }: { order: Order; reado
     } catch (error) { setMessage(error instanceof Error ? error.message : "No se pudo confirmar."); }
     finally { running.current = false; setBusy(false); }
   };
+  // La tienda puede abrir la conversación con el mensaje listo si el cliente no escribió (C74).
+  const chat = customerWhatsappHref(order.customer.phone, customerMessage(order, deadline));
   return (
     <div className="cod-pending" role="group" aria-label={`Confirmación por WhatsApp del pedido ${order.orderNumber}`}>
       <p><b>Por confirmar por WhatsApp.</b> Pide la ubicación en el chat. {deadline ? `Si no se confirma hasta el ${deadline}, se cancela solo.` : ""}</p>
       {!readonly && <>
+        {chat && <a className="cod-chat" href={chat} target="_blank" rel="noopener noreferrer"><MessageCircle size={16} aria-hidden="true" /> Escribirle por WhatsApp</a>}
         <label>Ubicación que envió el cliente (opcional)<input value={location} maxLength={300} placeholder="Enlace de Google Maps o referencia" onChange={event => setLocation(event.target.value)} /></label>
         <button type="button" className="publish" disabled={busy} onClick={() => void submit()}>{busy ? "Confirmando…" : "Confirmado por WhatsApp"}</button>
       </>}

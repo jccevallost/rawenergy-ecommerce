@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { z } from "zod";
 
-const schema = z.object({
+export const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(4000),
   MONGODB_URI: z.string().url().or(z.string().startsWith("mongodb://")).optional(),
@@ -47,7 +47,10 @@ const schema = z.object({
   MAIL_OPERATOR: z.string().email().optional(),
   STORE_NAME: z.string().min(2).max(60).default("RawEnergy EC"),
   STORE_URL: z.string().url().optional(),
-  STORE_WHATSAPP: z.string().max(40).optional(),
+  // WhatsApp de la tienda (público): confirmar contra entrega, recibir comprobantes y atención.
+  // Por omisión el número del propietario (C74), para que la compra nunca quede sin este paso;
+  // vacío lo apaga.
+  STORE_WHATSAPP: z.string().max(40).default("593983368127").transform(value => value.trim() || undefined),
   // Identidad legal para las políticas (responsable del tratamiento, LOPDP).
   STORE_LEGAL_NAME: z.string().min(2).max(120).optional(),
   STORE_RUC: z.string().regex(/^\d{13}$/, "El RUC tiene 13 dígitos").optional(),
@@ -70,7 +73,7 @@ const schema = z.object({
   TELEGRAM_API_URL: z.string().url().optional()
 });
 
-const parsed = schema.safeParse(process.env);
+const parsed = envSchema.safeParse(process.env);
 if (!parsed.success) throw new Error(`Configuración inválida: ${parsed.error.message}`);
 
 const isProduction = parsed.data.NODE_ENV === "production";

@@ -9,7 +9,7 @@ const root = resolve('.');
 const out = await mkdtemp(join(tmpdir(), 'rawenergy-store-review-'));
 const apiPort = 14851, uiPort = 14852, debugPort = 14853;
 const api = `http://127.0.0.1:${apiPort}`, ui = `http://127.0.0.1:${uiPort}`;
-const env = { PATH: process.env.PATH, NODE_ENV: 'development', DOTENV_CONFIG_PATH: '/dev/null', PORT: String(apiPort), CORS_ORIGINS: ui, PUBLIC_API_URL: api, AUTH_TOKEN_SECRET: 'isolated-storefront-review-secret-123456', ADMIN_EMAIL: 'review@example.com', ADMIN_PASSWORD: 'Review-only-123!', ADMIN_NAME: 'Revisión', VITE_GRAPHQL_URL: `${api}/graphql`, FREE_SHIPPING_THRESHOLD: '95', GRAPHQL_RATE_LIMIT_PER_MINUTE: '400', MAX_PENDING_ORDERS_PER_CUSTOMER: '20', BANK_NAME: 'Banco ficticio de prueba', BANK_ACCOUNT_TYPE: 'Ahorros', BANK_ACCOUNT_NUMBER: '0000000000', BANK_HOLDER: 'Tienda de prueba', STORE_WHATSAPP: '593983368127' };
+const env = { PATH: process.env.PATH, NODE_ENV: 'development', DOTENV_CONFIG_PATH: '/dev/null', PORT: String(apiPort), CORS_ORIGINS: ui, PUBLIC_API_URL: api, AUTH_TOKEN_SECRET: 'isolated-storefront-review-secret-123456', ADMIN_EMAIL: 'review@example.com', ADMIN_PASSWORD: 'Review-only-123!', ADMIN_NAME: 'Revisión', VITE_GRAPHQL_URL: `${api}/graphql`, FREE_SHIPPING_THRESHOLD: '95', GRAPHQL_RATE_LIMIT_PER_MINUTE: '400', MAX_PENDING_ORDERS_PER_CUSTOMER: '20', BANK_NAME: 'Banco ficticio de prueba', BANK_ACCOUNT_TYPE: 'Ahorros', BANK_ACCOUNT_NUMBER: '0000000000', BANK_HOLDER: 'Tienda de prueba' };
 const processes = [], logs = [], exceptions = [], checks = [], accessibility = [];
 let socket, inspect;
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -347,6 +347,8 @@ try {
   await js('for (let i=0;i<3;i++) document.querySelector(".drawer-foot .checkout").click()');
   await has('Confírmalo por WhatsApp y envíanos tu ubicación'); await has('Total a pagar al recibir'); await has('Confírmalo por WhatsApp antes del');
   assert(await js('!document.querySelector(".order-success .bank-instructions") && !document.body.innerText.includes("Paga antes del")'), 'Contra entrega sin datos bancarios ni plazo de reserva');
+  // Sin STORE_WHATSAPP en el entorno: el botón lleva al número del propietario por omisión (C74).
+  assert(await js('document.querySelector(".order-success a.whatsapp-continue").href.startsWith("https://wa.me/593983368127?text=")'), 'Botón de confirmar al WhatsApp de la tienda sin variable');
   const codMessage = await js('new URL(document.querySelector(".order-success a.whatsapp-continue").href).searchParams.get("text")');
   assert(codMessage.includes('contra entrega') && codMessage.includes('4 × Producto de revisión') && codMessage.includes('Total: $100,00'), 'Contra entrega también continúa por WhatsApp con el pedido');
   assert(codMessage.includes('Identificación para la factura: Pasaporte AB123456'), 'Extranjero con pasaporte, sin verificación');

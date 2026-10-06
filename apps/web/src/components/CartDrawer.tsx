@@ -413,14 +413,14 @@ export function CartDrawer() {
               </fieldset>
               {form.paymentMethod === "BANK_TRANSFER" ? (
                 <div className="payment-box">
-                  <p>{bankOnWeb ? "Despachamos cuando validamos el pago. No se abre una pasarela ni se cobra automáticamente." : "Al confirmar te llevamos a WhatsApp con tu pedido; ahí recibes los datos para transferir. Despachamos cuando validamos el pago."}</p>
+                  <p>{bankOnWeb ? "Despachamos cuando validamos el pago. No se abre una pasarela ni se cobra automáticamente." : whatsapp ? "Al confirmar te llevamos a WhatsApp con tu pedido; ahí recibes los datos para transferir. Despachamos cuando validamos el pago." : "Al confirmar te contactamos con los datos para transferir. Despachamos cuando validamos el pago."}</p>
                   <p className="reserve-note"><Clock3 size={16} aria-hidden="true" /><span>Reservamos tus productos durante {hours} horas. Si el pago no llega en ese plazo, el pedido se cancela automáticamente.</span></p>
                   {bankOnWeb && <label className="field"><span>Número de comprobante (opcional)</span><input name="paymentReference" maxLength={120} value={form.paymentReference} onChange={(event) => change("paymentReference", event.target.value)} placeholder="Si ya transferiste, escribe la referencia" /></label>}
                 </div>
               ) : (
                 <div className="payment-box">
-                  <p>Pagas el total al recibir el pedido. Al confirmar te llevamos a WhatsApp: ahí confirmas el pedido y nos envías tu ubicación.</p>
-                  <p className="reserve-note"><Clock3 size={16} aria-hidden="true" /><span>Si no lo confirmas por WhatsApp en {confirmHours} horas, el pedido se cancela automáticamente.</span></p>
+                  <p>{whatsapp ? "Pagas el total al recibir el pedido. Al confirmar te llevamos a WhatsApp: ahí confirmas el pedido y nos envías tu ubicación." : "Pagas el total al recibir el pedido. Te contactamos a tu celular para confirmar el pedido y tu ubicación."}</p>
+                  <p className="reserve-note"><Clock3 size={16} aria-hidden="true" /><span>{whatsapp ? `Si no lo confirmas por WhatsApp en ${confirmHours} horas, el pedido se cancela automáticamente.` : `Si no logramos confirmarlo en ${confirmHours} horas, el pedido se cancela automáticamente.`}</span></p>
                 </div>
               )}
               <label className="field"><span>Notas del pedido (opcional)</span><textarea name="notes" value={form.notes} onChange={(event) => change("notes", event.target.value)} maxLength={320} placeholder="Horario de entrega, instrucciones especiales…" /></label>
@@ -458,7 +458,7 @@ export function CartDrawer() {
               ? `El mensaje ya incluye tu pedido, la entrega y la forma de pago; solo tienes que enviarlo.${onDelivery ? " Después compártenos tu ubicación en el chat. Pagas el total al recibir." : bankOnWeb ? "" : " Te respondemos con los datos para transferir."}`
               : onDelivery ? "Te contactaremos para coordinar la entrega en tu dirección." : bankOnWeb ? "Transfiere el total a esta cuenta usando tu número de pedido como referencia y envíanos el comprobante." : "Te contactaremos con los datos para transferir."}
               {checkoutInfo?.notifiesByEmail ? ` También te enviamos la confirmación a ${createdOrder.customer.email}.` : ""}</p>
-            {deadline && <p className="notice reserve-note"><Clock3 size={18} aria-hidden="true" /><span>{onDelivery ? <>Confírmalo por WhatsApp antes del <b>{deadline}</b>; si no, el pedido se cancela automáticamente.</> : <>Paga antes del <b>{deadline}</b>; después, el pedido se cancela automáticamente y los productos vuelven al catálogo.</>}</span></p>}
+            {deadline && <p className="notice reserve-note"><Clock3 size={18} aria-hidden="true" /><span>{onDelivery ? whatsapp ? <>Confírmalo por WhatsApp antes del <b>{deadline}</b>; si no, el pedido se cancela automáticamente.</> : <>Te contactamos para confirmarlo antes del <b>{deadline}</b>; si no logramos confirmarlo, se cancela automáticamente.</> : <>Paga antes del <b>{deadline}</b>; después, el pedido se cancela automáticamente y los productos vuelven al catálogo.</>}</span></p>}
             {!onDelivery && checkoutInfo?.bank && <section className="bank-instructions" aria-labelledby="bank-title">
               <h4 id="bank-title">Datos para la transferencia</h4>
               <dl><dt>Banco</dt><dd>{checkoutInfo.bank.name}</dd><dt>Tipo de cuenta</dt><dd>{checkoutInfo.bank.accountType || "Consulta con la tienda"}</dd><dt>Cuenta</dt><dd>{checkoutInfo.bank.accountNumber}</dd><dt>Titular</dt><dd>{checkoutInfo.bank.holder}</dd><dt>Referencia del pedido</dt><dd>{createdOrder.orderNumber}</dd></dl>

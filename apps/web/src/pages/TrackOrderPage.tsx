@@ -50,7 +50,7 @@ function OrderResult({ order, info }: { order: TrackedOrder; info?: CheckoutInfo
         </ol>
       )}
       {order.status === "PENDING_PAYMENT" && order.reservedUntil && order.awaitingConfirmation && (
-        <p className="notice reserve-note"><Clock3 size={18} aria-hidden="true" /><span>Confírmalo por WhatsApp y envíanos tu ubicación antes del <b>{ecuadorDateTime(order.reservedUntil)}</b>; si no, el pedido se cancela automáticamente.</span></p>
+        <p className="notice reserve-note"><Clock3 size={18} aria-hidden="true" /><span>{whatsapp ? "Confírmalo por WhatsApp y envíanos tu ubicación" : "Te contactamos para confirmarlo y pedirte tu ubicación"} antes del <b>{ecuadorDateTime(order.reservedUntil)}</b>; si no, el pedido se cancela automáticamente.</span></p>
       )}
       {order.status === "PENDING_PAYMENT" && order.reservedUntil && !onDelivery && (
         <p className="notice reserve-note"><Clock3 size={18} aria-hidden="true" /><span>Reservamos tus productos hasta el <b>{ecuadorDateTime(order.reservedUntil)}</b>; si no recibimos el pago, el pedido se cancela automáticamente.</span></p>
