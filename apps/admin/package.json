@@ -19,7 +19,7 @@
     "lucide-react": "^0.511.0",
     "react": "~19.2.7",
     "react-dom": "~19.2.7",
-    "read-excel-file": "^9.3.10"
+    "read-excel-file": "^9.3.12"
   },
   "devDependencies": {
     "@types/react": "~19.2.17",
