@@ -1,6 +1,6 @@
 import { ApolloError, useApolloClient, useMutation, useQuery } from "@apollo/client";
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import { Landmark, Tag, Truck, Wallet } from "lucide-react";
+import { Hourglass, Landmark, Tag, Truck, Wallet } from "lucide-react";
 import { COMMERCE_SETTINGS, SAVE_COMMERCE_SETTINGS, type CommerceSettings } from "@vital-forge/shared-logic";
 import { formatMoney } from "@vital-forge/ui-core";
 import { useConfirm } from "../../components/common/ConfirmDialog";
@@ -48,6 +48,8 @@ export function CommercePanel() {
 
   const cod = form.cashOnDelivery;
   const welcome = form.welcomeDiscount;
+  const aging = form.inventoryAging ?? { targetMonths: 6, prepareDays: 60, priorityDays: 30, windowDays: 90, minHistoryDays: 30 };
+  const setAging = (key: keyof typeof aging, value: string) => set("inventoryAging", { ...aging, [key]: Math.round(Number(value)) });
   return (
     <section className="commerce-panel" aria-labelledby="commerce-title">
       <header>
@@ -96,6 +98,15 @@ export function CommercePanel() {
             <label>Válido hasta <small>vacío = sin fecha de fin</small><input type="date" disabled={!welcome.enabled} value={welcome.endsOn ?? ""} onChange={event => set("welcomeDiscount", { ...welcome, endsOn: event.target.value || null })} /></label>
             <label className="switch-row"><span><b>Anunciar el código en la tienda</b><small>Apagado: el código se reparte por WhatsApp o redes; la tienda solo muestra el campo para escribirlo.</small></span><input type="checkbox" disabled={!welcome.enabled} checked={welcome.showOnStore} onChange={event => set("welcomeDiscount", { ...welcome, showOnStore: event.target.checked })} /></label>
             <p className="commerce-hint">{welcome.enabled ? `${welcome.percent} % sobre los productos con el código ${welcome.code}${welcome.minimumSubtotal > 0 ? `, en compras desde ${formatMoney(welcome.minimumSubtotal)}` : ""}${welcome.endsOn ? `, hasta el ${welcome.endsOn}` : ""}. Una vez por persona; si el pedido se cancela, vuelve a quedar disponible. El envío gratis se calcula con el total ya descontado.` : "Descuento desactivado: la tienda no acepta el código."}</p>
+          </fieldset>
+          <fieldset className="commerce-card">
+            <legend><Hourglass size={16} /> Antigüedad y poca salida</legend>
+            <label>Objetivo de permanencia (meses)<input type="number" min="1" max="24" step="1" required value={aging.targetMonths} onChange={event => setAging("targetMonths", event.target.value)} /></label>
+            <label>Avisar para preparar a (días del objetivo)<input type="number" min="1" max="365" step="1" required value={aging.prepareDays} onChange={event => setAging("prepareDays", event.target.value)} /></label>
+            <label>Marcar como prioritario a (días)<input type="number" min="1" max="365" step="1" required value={aging.priorityDays} onChange={event => setAging("priorityDays", event.target.value)} /></label>
+            <label>Ventas consideradas (últimos días)<input type="number" min="14" max="365" step="1" required value={aging.windowDays} onChange={event => setAging("windowDays", event.target.value)} /></label>
+            <label>Historial mínimo con stock (días)<input type="number" min="7" max="180" step="1" required value={aging.minHistoryDays} onChange={event => setAging("minHistoryDays", event.target.value)} /></label>
+            <p className="commerce-hint">Objetivo interno, no caducidad: avisa a {aging.prepareDays} y {aging.priorityDays} días de cumplir {aging.targetMonths} meses. La poca salida se calcula con la venta de los últimos {aging.windowDays} días en que hubo stock. Valores iniciales propuestos: revísalos tras el primer mes.</p>
           </fieldset>
         </fieldset>
         <div className="dialog-actions">

@@ -74,3 +74,8 @@ input::placeholder,textarea::placeholder{color:#6b7468;opacity:1;font-weight:400
 .recovery-codes{margin:12px 0;padding:14px;border:1px solid #c9d4c6;border-radius:10px;background:#fbfcf9}
 .recovery-codes ul{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin:12px 0;padding:0;list-style:none}
 .recovery-codes code{font-size:15px;letter-spacing:.05em}
+/* SEG-01: pantalla para activar la verificación en dos pasos antes de usar el panel. */
+.mfa-gate{max-width:760px;margin:0 auto;padding:32px 16px;display:grid;gap:16px}
+.mfa-gate>header{font:700 23px 'Space Grotesk',sans-serif;letter-spacing:-.07em}
+.mfa-gate>header span{color:var(--orange);margin-left:4px}
+.mfa-gate h1{font-size:26px;margin:0 0 8px}

@@ -15,11 +15,14 @@ catch { console.error("Falta mongodb-memory-server. Instálalo sin guardarlo: np
 
 const script = process.argv[2] ?? "scripts/review-transactions.mts";
 const out = await mkdtemp(join(tmpdir(), "rawenergy-transactions-real-"));
-const replSet = await MongoMemoryReplSet.create({ replSet: { count: 1, name: "audit", storageEngine: "wiredTiger" } });
+// MONGO_TEST_COMMANDS=1 habilita los puntos de fallo de MongoDB (configureFailPoint) para simular
+// commits inciertos y errores transitorios. Solo en esta réplica temporal; por omisión no se activa.
+const testCommands = process.env.MONGO_TEST_COMMANDS === "1";
+const replSet = await MongoMemoryReplSet.create({ replSet: { count: 1, name: "audit", storageEngine: "wiredTiger", ...(testCommands ? { args: ["--setParameter", "enableTestCommands=1"] } : {}) } });
 try {
   const database = `rawenergy_audit_${randomUUID().replaceAll("-", "")}`;
   const uri = `mongodb://127.0.0.1:${replSet.servers[0].instanceInfo.port}/${database}?replicaSet=audit&directConnection=true`;
-  const env = { PATH: process.env.PATH, NODE_ENV: "test", DOTENV_CONFIG_PATH: "/dev/null", AUDIT_MONGODB_URI: uri, AUTH_TOKEN_SECRET: "isolated-transaction-audit-secret-123456789", ADMIN_EMAIL: "audit@example.test", ADMIN_PASSWORD: "Audit-only-123!", AUDIT_REPORT_PATH: join(out, "report.json") };
+  const env = { PATH: process.env.PATH, NODE_ENV: "test", DOTENV_CONFIG_PATH: "/dev/null", AUDIT_MONGODB_URI: uri, AUTH_TOKEN_SECRET: "isolated-transaction-audit-secret-123456789", ADMIN_EMAIL: "audit@example.test", ADMIN_PASSWORD: "Audit-only-123!", AUDIT_REPORT_PATH: join(out, "report.json"), ...(testCommands ? { MONGO_TEST_COMMANDS: "1" } : {}) };
   const child = spawn(process.execPath, ["--import", "tsx", script], { env, stdio: "inherit" });
   const code = await new Promise(resolve => child.on("exit", resolve));
   console.log(JSON.stringify({ ok: code === 0, report: join(out, "report.json") }));

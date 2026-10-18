@@ -1,0 +1,17 @@
+{
+  "name": "@vital-forge/mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Apps Android de RawEnergy (APK-01 administrativa y APK-02 de clientes): abren el panel y la tienda publicados.",
+  "scripts": {
+    "build:admin": "node scripts/build-apk.mjs admin",
+    "build:tienda": "node scripts/build-apk.mjs tienda"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.4.3",
+    "@capacitor/core": "8.4.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.4.3"
+  }
+}

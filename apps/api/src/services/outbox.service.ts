@@ -4,6 +4,7 @@ import type { OrderStatus } from "../validation/order.js";
 import { afterCommit, operationContext, registerMemoryStore, unitOfWork } from "../lib/unitOfWork.js";
 import { mailService, type MailOrder } from "./mail.service.js";
 import { telegramService } from "./telegram.service.js";
+import { usesMongo } from "../lib/persistence.js";
 
 // Bandeja de salida de avisos (P05). Cada aviso se guarda en la misma
 // transacción que el pedido o el cambio que lo origina, ya reservado por el
@@ -38,7 +39,7 @@ export const NotificationModel = (mongoose.models.Notification ?? mongoose.model
 
 let memory: NotificationJob[] = [];
 registerMemoryStore(() => memory, value => { memory = value; });
-const mongo = () => mongoose.connection.readyState === 1;
+const mongo = usesMongo;
 const fromDoc = (doc: Record<string, unknown>): NotificationJob => ({ ...(doc as unknown as NotificationJob), id: String(doc._id) });
 
 type Channel = { enabled: () => boolean; send: (job: NotificationJob, order?: MailOrder) => Promise<boolean> };

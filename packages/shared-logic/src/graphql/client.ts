@@ -15,7 +15,17 @@ export const fetchWithRateLimit: typeof fetch = async (input, init) => {
   return response;
 };
 
-export const createGraphQLClient = (uri: string) => {
+/**
+ * VER-01: plataforma y versión del cliente. Las apps nativas añaden a su agente de usuario
+ * «RawEnergyShell/<plataforma>/<versión>»; en el navegador se informa la web sin versión mínima.
+ */
+export function clientHeader(app: "panel" | "tienda") {
+  const marker = typeof navigator === "undefined" ? null : /RawEnergyShell\/([a-z][a-z-]{1,30})\/(\d+\.\d+\.\d+)/.exec(navigator.userAgent);
+  return marker ? `${marker[1]}/${marker[2]}` : `${app}-web/0.0.0`;
+}
+
+export const createGraphQLClient = (uri: string, app: "panel" | "tienda" = "tienda") => {
+  const client = clientHeader(app);
   const retryLink = new RetryLink({
     delay: { initial: 350, max: 4_000, jitter: true },
     attempts: { max: 6, retryIf: (error, operation) => { const definition = getMainDefinition(operation.query); return Boolean(error) && definition.kind === "OperationDefinition" && definition.operation === "query"; } }
@@ -23,7 +33,7 @@ export const createGraphQLClient = (uri: string) => {
   const authLink = new ApolloLink((operation, forward) => {
     const token = typeof localStorage === "undefined" ? null : localStorage.getItem("rawenergy-token");
     operation.setContext(({ headers = {} }) => ({
-      headers: token ? { ...headers, authorization: `Bearer ${token}` } : headers
+      headers: { ...headers, "x-rawenergy-client": client, ...(token ? { authorization: `Bearer ${token}` } : {}) }
     }));
     return forward(operation);
   });

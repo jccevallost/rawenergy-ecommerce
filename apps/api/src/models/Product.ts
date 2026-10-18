@@ -14,7 +14,7 @@ const variantSchema = new Schema({
   reorderPoint: { type: Number, default: 5, min: 0 },
   stock: { type: Number, required: true, min: 0 },
   sku: { type: String, required: true },
-  lots: { type: [{ warehouseId: String, lot: String, expiresOn: String, quantity: Number, unitCost: { type: Number, default: null }, _id: false }], default: [] },
+  lots: { type: [{ warehouseId: String, lot: String, expiresOn: String, quantity: Number, unitCost: { type: Number, default: null }, layerId: String, receivedOn: String, source: String, purchaseId: String, purchaseLine: Number, _id: false }], default: [] },
   images: { type: [imageSchema], default: [] }
 });
 const nutritionSchema = new Schema({

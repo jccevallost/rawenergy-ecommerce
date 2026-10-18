@@ -5,6 +5,7 @@ import { IMAGE_URL } from "../validation/product.js";
 import { operationContext, registerMemoryStore, unitOfWork } from "../lib/unitOfWork.js";
 import { suggestedCampaigns } from "../data/suggestedCampaigns.js";
 import { productService } from "./product.service.js";
+import { usesMongo } from "../lib/persistence.js";
 
 // Campañas de portada: texto editorial, fechas y una selección de productos del
 // catálogo (por objetivo, marca o elección manual). No guardan precios ni
@@ -51,7 +52,7 @@ export const CampaignModel = (mongoose.models.Campaign ?? mongoose.model("Campai
 
 let memory: Campaign[] = [];
 registerMemoryStore(() => memory, value => { memory = value; });
-const mongo = () => mongoose.connection.readyState === 1;
+const mongo = usesMongo;
 const normalize = (value: any): Campaign => ({
   id: String(value._id ?? value.id), slug: value.slug, title: value.title, eyebrow: value.eyebrow, message: value.message, ctaLabel: value.ctaLabel,
   theme: value.theme, startsOn: value.startsOn, endsOn: value.endsOn, active: Boolean(value.active), priority: value.priority ?? 0,

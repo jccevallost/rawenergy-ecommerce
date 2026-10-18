@@ -1,0 +1,29 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "RawEnergy Gestión",
+  "version": "1.0.0",
+  "identifier": "ec.rawenergy.gestion",
+  "build": { "frontendDist": "../placeholder" },
+  "app": {
+    "windows": [],
+    "withGlobalTauri": false,
+    "security": { "csp": null, "capabilities": ["default"] }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "app"],
+    "publisher": "RawEnergy",
+    "shortDescription": "Panel de gestión de RawEnergy",
+    "longDescription": "Abre el panel de gestión de la tienda RawEnergy en una ventana propia. Requiere conexión a internet.",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "windows": {
+      "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["Spanish"],
+        "template": "windows/installer.nsi",
+        "installerIcon": "icons/icon.ico"
+      }
+    }
+  }
+}

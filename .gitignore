@@ -21,3 +21,13 @@ exports/
 # Documentación interna (auditorías, evidencias, guías): solo en este equipo. El
 # repositorio es público y la auditoría de seguridad describe debilidades (C71).
 docs/
+
+# Copias de la base (RESP-01): contienen datos personales; nunca al repositorio.
+*.respaldo
+# WIN-01: compilaciones del programa de escritorio.
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
+apps/desktop/src-tauri/windows/installer.nsi
+# APK-01/APK-02: proyectos Android generados y compilaciones.
+apps/mobile/android-admin/
+apps/mobile/android-tienda/

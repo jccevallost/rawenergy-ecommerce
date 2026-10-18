@@ -64,7 +64,7 @@ function Terms({ legal, info }: { legal?: StoreLegal; info?: CheckoutInfo }) {
   </>;
 }
 
-function Privacy({ legal }: { legal?: StoreLegal }) {
+function Privacy({ legal, info }: { legal?: StoreLegal; info?: CheckoutInfo }) {
   return <>
     <p>Esta política explica qué datos personales tratamos, para qué y cuáles son tus derechos según la Ley Orgánica de Protección de Datos Personales del Ecuador (LOPDP).</p>
     <h2>1. Responsable del tratamiento</h2>
@@ -72,7 +72,9 @@ function Privacy({ legal }: { legal?: StoreLegal }) {
     <h2>2. Qué datos tratamos</h2>
     <ul>
       <li><b>Datos del pedido:</b> nombre completo, celular o WhatsApp, correo, provincia, ciudad, dirección y referencia de entrega, identificación para la factura (cédula, RUC o, si eres extranjero, pasaporte), productos, importes, notas y la referencia del comprobante si la escribes.</li>
-      <li><b>Cuenta (opcional):</b> nombre, correo y contraseña cifrada si decides crear una cuenta.</li>
+      {info?.customerAccounts
+        ? <li><b>Cuenta (opcional):</b> nombre, correo y contraseña cifrada si decides crear una cuenta.</li>
+        : <li><b>Cuentas creadas antes:</b> hoy la tienda no ofrece cuentas. Si creaste una antes, conservamos su nombre, correo y contraseña cifrada; puedes pedir que la eliminemos ejerciendo tus derechos (sección 7).</li>}
       <li><b>Datos técnicos:</b> dirección IP y registros de seguridad para prevenir abusos, como intentos repetidos de acceso o de pedidos.</li>
     </ul>
     <p>No pedimos datos de tarjetas ni claves bancarias: el pago es por transferencia desde tu banco.</p>
@@ -148,7 +150,7 @@ export function LegalPage({ topic }: { topic: LegalTopic }) {
   const { data: checkout } = useQuery<{ checkoutInfo: CheckoutInfo }>(CHECKOUT_INFO);
   const legal = data?.storeLegal;
   const body: Record<LegalTopic, ReactNode> = {
-    terminos: <Terms legal={legal} info={checkout?.checkoutInfo} />, privacidad: <Privacy legal={legal} />,
+    terminos: <Terms legal={legal} info={checkout?.checkoutInfo} />, privacidad: <Privacy legal={legal} info={checkout?.checkoutInfo} />,
     devoluciones: <Returns legal={legal} />, envios: <Shipping legal={legal} info={checkout?.checkoutInfo} />
   };
   return (

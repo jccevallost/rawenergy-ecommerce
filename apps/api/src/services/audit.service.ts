@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { z } from "zod";
 import { env } from "../config/env.js";
 import { unitOfWork, operationContext, afterCommit } from "../lib/unitOfWork.js";
+import { usesMongo } from "../lib/persistence.js";
 
 const schema = new mongoose.Schema({
   operationId: { type: String, index: true }, requestId: { type: String, index: true }, actorId: String, actorEmail: String, ip: String,
@@ -27,16 +28,20 @@ export const auditFilters = z.object({
   from: z.string().datetime().optional(), to: z.string().datetime().optional(),
   offset: z.number().int().min(0).default(0), limit: z.number().int().min(1).max(100).default(30)
 });
+// Niveles que guarda la bitácora (D04). Los argumentos JSON ya llegan con 16 como máximo;
+// cualquier otro valor más profundo se corta aquí en vez de agotar la pila.
+const MAX_REDACT_DEPTH = 24;
 // Do not retain secrets, binary uploads or authentication tokens in the journal.
-export function redact(value: unknown): unknown {
+export function redact(value: unknown, depth = 0): unknown {
   if (value == null) return null;
   if (value instanceof Date) return value.toISOString();
   if (Buffer.isBuffer(value)) return "[BINARY]";
-  if (Array.isArray(value)) return value.map(redact);
+  if (typeof value === "object" && depth >= MAX_REDACT_DEPTH) return "[TRUNCATED]";
+  if (Array.isArray(value)) return value.map((entry) => redact(entry, depth + 1));
   if (typeof value === "object") {
     if ("toHexString" in value) return String(value);
-    if ("toObject" in value && typeof value.toObject === "function") return redact(value.toObject());
-    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, /password|token|secret|authorization|credential|resetHash|requestKey|requestFingerprint|idempotencyKey|idNumber|otpauth|recoveryCodes|totp|^code$/i.test(key) ? "[REDACTED]" : redact(entry)]));
+    if ("toObject" in value && typeof value.toObject === "function") return redact(value.toObject(), depth);
+    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, /password|token|secret|authorization|credential|resetHash|requestKey|requestFingerprint|idempotencyKey|idNumber|otpauth|recoveryCodes|totp|^code$/i.test(key) ? "[REDACTED]" : redact(entry, depth + 1)]));
   }
   return value;
 }
@@ -46,13 +51,13 @@ class AuditService {
   private memory: Event[] = [];
   /** Pone fecha de borrado a los eventos anteriores a la conservación (idempotente; al arrancar). */
   async applyRetention() {
-    if (mongoose.connection.readyState !== 1) return 0;
+    if (!usesMongo()) return 0;
     const result = await AuditModel.updateMany({ expiresAt: { $exists: false } }, [{ $set: { expiresAt: { $add: ["$createdAt", retentionMs()] } } }]);
     return result.modifiedCount;
   }
   async record(event: Omit<Event, "id" | "createdAt">) {
     const row = { ...event, before: redact(event.before), after: redact(event.after), input: redact(event.input), id: randomUUID(), createdAt: new Date().toISOString() };
-    if (mongoose.connection.readyState === 1) await AuditModel.create({ ...row, expiresAt: new Date(Date.now() + retentionMs()) });
+    if (usesMongo()) await AuditModel.create({ ...row, expiresAt: new Date(Date.now() + retentionMs()) });
     else if (operationContext.getStore()) afterCommit(() => { this.memory.unshift(row); });
     else this.memory.unshift(row);
     return row;
@@ -100,7 +105,7 @@ class AuditService {
   async list(raw: unknown = {}): Promise<{rows: Event[]; total: number}> {
     const f = auditFilters.parse(raw);
     if (f.from && f.to && f.from > f.to) throw new Error("Rango de fechas inválido");
-    if (mongoose.connection.readyState === 1) {
+    if (usesMongo()) {
       const query: Record<string, unknown> = {};
       if (f.entity) query.entity = f.entity;
       if (f.status) query.status = f.status === "RESULT" ? { $in: ["SUCCESS", "FAILED"] } : f.status === "UNRESOLVED" ? "STARTED" : f.status;

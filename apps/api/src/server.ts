@@ -1,4 +1,9 @@
 import { supplyService } from "./services/supply.service.js";
+import { isMutation, isOutdated, minimumVersions, parseClient, upgradeMessage } from "./lib/clientVersion.js";
+import { purchaseImportService } from "./services/purchaseImport.service.js";
+import { MAX_PDF_BYTES } from "./services/pdfText.js";
+import { permissions } from "./services/permissions.js";
+import { ensureIndexes, indexReport } from "./lib/indexes.js";
 import mongoose from "mongoose";
 import { randomUUID } from "node:crypto";
 import { auditService } from "./services/audit.service.js";
@@ -13,7 +18,8 @@ import { env } from "./config/env.js";
 import { resolvers } from "./graphql/resolvers.js";
 import { typeDefs } from "./graphql/typeDefs.js";
 import { operationWidthRule } from "./graphql/validationRules.js";
-import { authService } from "./services/auth.service.js";
+import { publicError } from "./graphql/publicError.js";
+import { authService, mfaSetupPending, type AuthUser } from "./services/auth.service.js";
 import { mediaService, MAX_MEDIA_BYTES, MediaInputError } from "./services/media.service.js";
 import { clientIp, ipKey } from "./lib/clientIp.js";
 import { securityAlerts } from "./services/securityAlerts.service.js";
@@ -30,14 +36,14 @@ const apollo = new ApolloServer({
   // Sin «Did you mean…» en producción: con la introspección apagada, las sugerencias
   // permitirían reconstruir el esquema campo a campo (C60, S13).
   hideSchemaDetailsFromClientErrors: env.isProduction,
-  formatError: (formattedError) => env.NODE_ENV === "production"
-    ? { message: formattedError.message, extensions: { code: formattedError.extensions?.code } }
-    : formattedError
+  // Producción: mensajes de negocio intactos; fallos internos con mensaje fijo (D04, D09).
+  formatError: (formattedError, error) => env.NODE_ENV === "production" ? publicError(formattedError, error) : formattedError
 });
 
 try {
   const database = await productService.connect(env.MONGODB_URI);
-  if(database.mode === "mongodb") await Promise.all(Object.values(mongoose.models).map(model => model.init()));
+  // M45: crea y verifica los índices; un duplicado previo no detiene la tienda, solo las altas afectadas.
+  if(database.mode === "mongodb") await ensureIndexes();
   authService.setPersistence(database.mode === "mongodb");
   const retained = await auditService.applyRetention();
   if (retained) console.info(`[api] ${retained} eventos de auditoría con fecha de borrado (${env.AUDIT_RETENTION_DAYS} días)`);
@@ -86,11 +92,12 @@ const rateKey = (req: Request) => ipKey(clientIp(req));
 // Render y Netlify terminan TLS por delante: sin esto req.protocol dice "http"
 // y las URL de las imagenes saldrian mal formadas.
 app.set("trust proxy", 1);
-app.get("/health", (_req, res) => res.json({ status: "ok" }));
+app.get("/health", (_req, res) => res.json({ status: "ok", ...(indexReport() ? { indexes: indexReport()!.ok ? "ok" : "incompleto" } : {}) }));
 
 // Montado sobre la ruta, no sobre el POST: asi tambien responde el preflight
 // OPTIONS que el navegador manda antes de subir desde otro origen.
 app.use("/media", cors({ origin: env.corsOrigins }));
+app.use("/purchase-imports", cors({ origin: env.corsOrigins }));
 
 // Las fotos se guardan aparte del producto y se sirven por su hash, que no
 // cambia nunca: por eso se pueden cachear como inmutables.
@@ -108,13 +115,42 @@ app.get("/media/:id", async (req, res) => {
   return res.send(file.data);
 });
 
+// IMP-01: subida privada de facturas en PDF. La sesión y el permiso se comprueban antes de leer el archivo.
+const canImport = (user: AuthUser | null | undefined, permission: "purchases.read" | "purchases.write") => Boolean(user && permissions[user.role].includes(permission) && !mfaSetupPending(user));
+app.post("/purchase-imports",
+  rateLimit({ windowMs: 60_000, limit: 20, standardHeaders: "draft-7", legacyHeaders: false, keyGenerator: rateKey }),
+  attachUser,
+  (req, res, next) => canImport((req as WithUser).authUser, "purchases.write") ? next() : res.status(403).json({ error: "No tienes permiso para importar facturas." }),
+  express.raw({ type: "application/pdf", limit: MAX_PDF_BYTES }),
+  async (req, res) => {
+    const user = (req as WithUser).authUser!;
+    if (!Buffer.isBuffer(req.body) || !req.body.length) return res.status(415).json({ error: "Envía el archivo PDF de la factura." });
+    try {
+      const result = await auditService.run({ user, ip: clientIp(req), requestId: randomUUID() }, "uploadPurchaseImport", "purchases", "", { bytes: req.body.length }, null, () => purchaseImportService.upload(req.body as Buffer, { id: user.id, name: user.name }));
+      return res.status(result.existing ? 200 : 201).json({ id: result.record.id, status: result.record.status, existing: result.existing, failure: result.record.failure ?? null });
+    } catch (error) {
+      console.error("[importación] no se pudo guardar la factura", error);
+      return res.status(400).json({ error: "No se pudo procesar la factura. Vuelve a intentarlo o regístrala a mano." });
+    }
+  });
+app.get("/purchase-imports/:id/file", attachUser, async (req, res) => {
+  if (!canImport((req as WithUser).authUser, "purchases.read")) return res.status(403).json({ error: "No tienes permiso para ver facturas." });
+  const file = await purchaseImportService.file(String(req.params.id).slice(0, 80)).catch(() => null);
+  if (!file) return res.status(404).json({ error: "Factura no encontrada." });
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Cache-Control", "private, no-store");
+  res.setHeader("Content-Disposition", "inline; filename=\"factura.pdf\"");
+  return res.send(file.data);
+});
+
 app.post("/media",
   rateLimit({ windowMs: 60_000, limit: 40, standardHeaders: "draft-7", legacyHeaders: false, keyGenerator: rateKey }),
   // La sesión se comprueba antes de leer el archivo: sin ella no se aceptan 5 MB (C60, S09).
   attachUser,
   (req, res, next) => {
     const user = (req as WithUser).authUser;
-    if (!user || !["ADMIN", "CATALOG"].includes(user.role)) return res.status(401).json({ error: "Solo un administrador puede subir imagenes" });
+    if (!user || !permissions[user.role].includes("catalog.write")) return res.status(401).json({ error: "Solo el personal de catálogo puede subir imágenes" });
+    if (mfaSetupPending(user)) return res.status(403).json({ error: "Activa la verificación en dos pasos en «Mi acceso» para subir imágenes." });
     next();
   },
   express.raw({ type: mediaService.allowedList, limit: MAX_MEDIA_BYTES }),
@@ -141,6 +177,7 @@ app.post("/media",
 const graphqlRateLimited = { errors: [{ message: "Demasiadas solicitudes seguidas. Espera un minuto y vuelve a intentarlo.", extensions: { code: "RATE_LIMITED", retryAfter: 60 } }] };
 // Cuerpo de las peticiones GraphQL (C60, S09): 100 KB alcanzan para cualquier operación de la
 // tienda (un pedido de 60 líneas pesa unos 10 KB); el personal importa hasta 200 productos.
+const clientMinimums = minimumVersions(env.MIN_CLIENT_VERSIONS);
 const publicJson = express.json({ limit: "100kb" });
 const staffJson = express.json({ limit: "10mb" });
 app.use("/graphql",
@@ -152,8 +189,10 @@ app.use("/graphql",
   rateLimit({ windowMs: 60_000, limit: env.GRAPHQL_RATE_LIMIT_PER_MINUTE, standardHeaders: "draft-7", legacyHeaders: false, message: graphqlRateLimited,
     keyGenerator: rateKey,
     skip: isStaffRequest,
-    handler: (req, res, _next, options) => { securityAlerts.rateLimited("límite general de la API"); res.status(options.statusCode).json(options.message); } }),
+    handler: (_req, res, _next, options) => { securityAlerts.rateLimited("límite general de la API"); res.status(options.statusCode).json(options.message); } }),
   (req, res, next) => (isStaffRequest(req) ? staffJson : publicJson)(req, res, next),
+  // VER-01: una app desactualizada puede consultar, pero no escribir.
+  (req, res, next) => isOutdated(parseClient(req.headers["x-rawenergy-client"]), clientMinimums) && isMutation(req.body) ? res.status(200).json({ errors: [{ message: upgradeMessage, extensions: { code: "CLIENT_UPGRADE_REQUIRED" } }] }) : next(),
   expressMiddleware(apollo, {
     context: async ({ req }) => ({ user: (req as WithUser).authUser ?? null, requestId: randomUUID(), ip: clientIp(req) })
   })

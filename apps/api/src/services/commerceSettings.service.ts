@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { z } from "zod";
 import { env } from "../config/env.js";
 import { operationContext, registerMemoryStore, unitOfWork } from "../lib/unitOfWork.js";
+import { usesMongo } from "../lib/persistence.js";
 
 // Reglas comerciales que el administrador edita en el panel: cuenta para
 // transferencias, tarifas de envío, envío gratis y pago contra entrega. El
@@ -38,7 +39,15 @@ export const commerceInputSchema = z.object({
     endsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha AAAA-MM-DD").nullable(),
     // Encendido: la tienda anuncia el código; apagado: se reparte por otros canales.
     showOnStore: z.boolean()
-  }).strict()
+  }).strict(),
+  // ROT-01: umbrales de antigüedad y poca salida. Valores iniciales propuestos, a calibrar con el propietario.
+  inventoryAging: z.object({
+    targetMonths: z.number().int().min(1).max(24),
+    prepareDays: z.number().int().min(1).max(365),
+    priorityDays: z.number().int().min(1).max(365),
+    windowDays: z.number().int().min(14).max(365),
+    minHistoryDays: z.number().int().min(7).max(180)
+  }).strict().refine(a => a.priorityDays < a.prepareDays, "Los días de prioridad deben ser menos que los de preparación.").optional()
 }).strict();
 
 export type CommerceInput = z.infer<typeof commerceInputSchema>;
@@ -61,19 +70,20 @@ export function defaultCommerceSettings(): CommerceSettings {
     showBankDetails: false,
     // Decisión del propietario (2026-09-29): 10 % para clientes nuevos con código.
     welcomeDiscount: { enabled: true, code: "BIENVENIDA10", percent: 10, minimumSubtotal: 0, endsOn: null, showOnStore: true },
+    inventoryAging: { targetMonths: 6, prepareDays: 60, priorityDays: 30, windowDays: 90, minHistoryDays: 30 },
     revision: 0, updatedByName: "", updatedAt: null
   };
 }
 
 const schema = new mongoose.Schema({
-  _id: String, bank: Object, shippingFees: Object, freeShippingThreshold: Number, freeShippingMethods: [String], cashOnDelivery: Object, showBankDetails: Boolean, welcomeDiscount: Object,
+  _id: String, bank: Object, shippingFees: Object, freeShippingThreshold: Number, freeShippingMethods: [String], cashOnDelivery: Object, showBankDetails: Boolean, welcomeDiscount: Object, inventoryAging: Object,
   revision: { type: Number, default: 0 }, updatedByName: String
 }, { timestamps: true, minimize: false });
 export const SettingsModel = (mongoose.models.CommerceSettings ?? mongoose.model("CommerceSettings", schema, "settings")) as mongoose.Model<mongoose.InferSchemaType<typeof schema>>;
 
 let memory: CommerceSettings | null = null;
 registerMemoryStore(() => memory, value => { memory = value; });
-const mongo = () => mongoose.connection.readyState === 1;
+const mongo = usesMongo;
 const DOC_ID = "commerce";
 
 export const freeShippingApplies = (settings: CommerceSettings, method: ShippingMethod, subtotal: number) =>
@@ -96,18 +106,20 @@ export const commerceSettingsService = {
     if (mongo()) {
       const row = await SettingsModel.findById(DOC_ID).lean();
       if (!row) return defaultCommerceSettings();
-      const { bank, shippingFees, freeShippingThreshold, freeShippingMethods, cashOnDelivery, showBankDetails, welcomeDiscount, revision, updatedByName, updatedAt } = row as unknown as Partial<CommerceSettings> & CommerceSettings & { updatedAt: Date };
+      const { bank, shippingFees, freeShippingThreshold, freeShippingMethods, cashOnDelivery, showBankDetails, welcomeDiscount, inventoryAging, revision, updatedByName, updatedAt } = row as unknown as Partial<CommerceSettings> & CommerceSettings & { updatedAt: Date };
       // Guardados antes de C31: se completan con las reglas vigentes del propietario.
       const initial = defaultCommerceSettings();
-      return { bank, shippingFees, freeShippingThreshold, freeShippingMethods: freeShippingMethods ?? initial.freeShippingMethods, cashOnDelivery: { ...initial.cashOnDelivery, ...cashOnDelivery }, showBankDetails: showBankDetails ?? initial.showBankDetails, welcomeDiscount: { ...initial.welcomeDiscount, ...welcomeDiscount }, revision, updatedByName: updatedByName ?? "", updatedAt: updatedAt ? new Date(updatedAt).toISOString() : null };
+      return { inventoryAging: { ...initial.inventoryAging!, ...(inventoryAging ?? {}) }, bank, shippingFees, freeShippingThreshold, freeShippingMethods: freeShippingMethods ?? initial.freeShippingMethods, cashOnDelivery: { ...initial.cashOnDelivery, ...cashOnDelivery }, showBankDetails: showBankDetails ?? initial.showBankDetails, welcomeDiscount: { ...initial.welcomeDiscount, ...welcomeDiscount }, revision, updatedByName: updatedByName ?? "", updatedAt: updatedAt ? new Date(updatedAt).toISOString() : null };
     }
     return memory ? structuredClone(memory) : defaultCommerceSettings();
   },
   /** Guarda con revisión optimista: dos administradores no se pisan los cambios. */
   async save(raw: unknown, revision: number, actor: { name: string }): Promise<{ settings: CommerceSettings; bankChanged: boolean }> {
     if (!operationContext.getStore()) return unitOfWork(() => this.save(raw, revision, actor));
-    const input = commerceInputSchema.parse(raw);
+    const parsed = commerceInputSchema.parse(raw);
     const current = await this.get();
+    // Un cliente que no envía los umbrales los conserva: no vuelven a los valores iniciales.
+    const input = { ...parsed, inventoryAging: parsed.inventoryAging ?? current.inventoryAging };
     if (current.revision !== revision) throw new Error("Otra persona cambió la configuración. Actualiza antes de guardar; tus cambios siguen en el formulario.");
     const settings: CommerceSettings = { ...input, revision: revision + 1, updatedByName: actor.name, updatedAt: new Date().toISOString() };
     if (mongo()) {

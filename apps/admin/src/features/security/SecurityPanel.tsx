@@ -37,7 +37,7 @@ function TwoFactor() {
     try {
       const result = await confirm({ variables: { code: code.trim() } });
       setCodes(result.data?.confirmTwoFactorSetup.recoveryCodes ?? []);
-      setSetup(null); setCode("");
+      setSetup(null); setCode(""); setNotice("Verificación activada. Se cerraron tus sesiones en otros dispositivos.");
       await status.refetch();
     } catch (caught) { setError(message(caught)); document.getElementById("two-factor-code")?.focus(); }
   };
@@ -45,7 +45,7 @@ function TwoFactor() {
     event.preventDefault(); setError("");
     try {
       await disable({ variables: { code: code.trim() } });
-      setCode(""); setNotice("Verificación en dos pasos desactivada."); setCodes(null);
+      setCode(""); setNotice("Verificación en dos pasos desactivada. Se cerraron tus sesiones en otros dispositivos."); setCodes(null);
       await status.refetch();
     } catch (caught) { setError(message(caught)); document.getElementById("two-factor-code")?.focus(); }
   };

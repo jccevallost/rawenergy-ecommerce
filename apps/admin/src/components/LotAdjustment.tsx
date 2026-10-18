@@ -1,7 +1,7 @@
 import { gql, useApolloClient, useMutation, useQuery } from "@apollo/client";
 import { useRef, useState } from "react";
 import { useUnsavedChanges } from "./common/UnsavedChanges";
-type Position = {productId:string;sku:string;warehouseId:string;lot:string;expiresOn:string;unitCost:number|null;quantity:number;reserved?:number};
+type Position = {productId:string;sku:string;warehouseId:string;lot:string;expiresOn:string;unitCost:number|null;quantity:number;reserved?:number;layerId?:string;receivedOn?:string};
 const STOCK=gql`query LotStock($id:ID!){product(id:$id){id variants{sku stock}}}`;
 const ADJUST=gql`mutation AdjustLot($input:JSON!){adjustStock(input:$input)}`;
 export function LotAdjustment({position,onClose,onSaved}:{position:Position;onClose:()=>void;onSaved:(message:string)=>void}) {
@@ -14,8 +14,8 @@ export function LotAdjustment({position,onClose,onSaved}:{position:Position;onCl
     event.preventDefault();if(!variant||saving.current)return;
     saving.current=true;setBusy(true);setError("");
     try {
-      const{warehouseId,lot,expiresOn,unitCost}=position;
-      await save({variables:{input:{productId:position.productId,sku:position.sku,expectedStock:variant.stock,expectedLotQuantity:position.quantity,delta,reason,position:{warehouseId,lot,expiresOn,unitCost}}}});
+      const{warehouseId,lot,expiresOn,unitCost,layerId}=position;
+      await save({variables:{input:{productId:position.productId,sku:position.sku,expectedStock:variant.stock,expectedLotQuantity:position.quantity,delta,reason,position:{warehouseId,lot,expiresOn,unitCost,...(layerId?{layerId}:{})}}}});
       let message="Ajuste del lote guardado. Las unidades reservadas se conservaron.";
       await client.refetchQueries({include:"active"}).catch(()=>{message="Ajuste del lote guardado. Actualiza el inventario antes de realizar otro ajuste.";});
       setDelta(0);setReason("");onSaved(message);
@@ -23,8 +23,8 @@ export function LotAdjustment({position,onClose,onSaved}:{position:Position;onCl
     finally {saving.current=false;setBusy(false);}
   }}>
     <h2>Ajustar lote {position.lot} · {position.sku}</h2>
-    <p>Vencimiento: {position.expiresOn||"sin registrar"} · Costo: {position.unitCost===null?"sin registrar":`$${position.unitCost.toFixed(2)}`}.</p>
-    <p>El ajuste afecta únicamente a esta bodega, lote, vencimiento y costo. {position.quantity} unidades sin reservar; {position.reserved??0} reservadas.</p>
+    <p>Recibido: {position.receivedOn||"sin registrar"} · Vencimiento: {position.expiresOn||"sin registrar"} · Costo: {position.unitCost===null?"sin registrar":`$${position.unitCost.toFixed(2)}`}.</p>
+    <p>El ajuste afecta únicamente a esta recepción del lote en esta bodega. {position.quantity} unidades sin reservar; {position.reserved??0} reservadas.</p>
     <fieldset disabled={busy} style={{border:0,padding:0,margin:0,minWidth:0}}>
       <label>Entrada (+) / salida (−)<input required type="number" min={-position.quantity} max={100000} value={delta} onChange={event=>setDelta(Number(event.target.value))}/></label>
       <label>Motivo<textarea required minLength={5} maxLength={300} value={reason} onChange={event=>setReason(event.target.value)}/></label>

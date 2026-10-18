@@ -1,0 +1,44 @@
+/* Compras con factura (M05) y recepción con fecha real (M40). */
+.invoice-fields{border:0;border-top:1px solid var(--line);margin:12px 0 4px;padding:16px 0 0;min-width:0}
+.invoice-fields legend{font-weight:700;font-size:15px;padding:0 8px 0 0;color:var(--ink)}
+.invoice-fields>p{margin:4px 0 12px;color:#4f5751;font-size:13px;line-height:1.5}
+/* Importación de facturas en PDF (IMP-01). */
+.invoice-import h3{margin:18px 0 8px;font-size:16px}
+.invoice-import .file-drop{display:grid;gap:8px;padding:18px;border:2px dashed var(--line);border-radius:10px;font-weight:600}
+.import-summary{display:grid;gap:6px;margin-bottom:12px}
+.import-summary p{margin:0}
+.import-ok{color:#1f5f2c;font-weight:600}
+.import-exceptions{border:1px solid #f0b8a8;background:#fff5f2;border-radius:8px;padding:12px 14px;margin:10px 0}
+.import-exceptions ul{margin:6px 0 0;padding-left:18px}
+.import-lines{list-style:none;padding:0;margin:12px 0;display:grid;gap:10px}
+.import-lines>li{border:1px solid var(--line);border-radius:10px;padding:12px;display:grid;gap:8px}
+.import-lines>li.needs-review{border-left:4px solid #c56a00}
+.import-lines small{display:block;color:#4f5751;font-weight:400}
+.import-product{display:flex;gap:8px;align-items:center;justify-content:space-between;min-width:0}
+.import-product span{min-width:0;overflow-wrap:anywhere}
+.import-picker{display:grid;gap:8px;border-top:1px solid var(--line);padding-top:10px}
+.import-picker ul{list-style:none;padding:0;margin:0;display:grid;gap:6px;max-height:280px;overflow:auto}
+.import-picker ul button{width:100%;text-align:left}
+.import-summary button{justify-self:start}
+/* Antigüedad y poca salida (ROT-01): el estado se lee en texto y marcas, no solo por color. */
+.aging-panel{display:grid;gap:14px}
+.aging-rule{color:#4f5751;font-size:13px;margin:0}
+.aging-counts{list-style:none;padding:0;margin:8px 0;display:flex;flex-wrap:wrap;gap:8px}
+.aging-counts li{border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:13px}
+.aging-list{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.aging-list>li{border:1px solid var(--line);border-left:5px solid #9aa39c;border-radius:10px;padding:12px;display:grid;gap:6px;background:#fff}
+.aging-list small{display:block;color:#4f5751}
+.aging-list dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px 12px;margin:0}
+.aging-list dt{font-size:12px;color:#4f5751}.aging-list dd{margin:0;font-weight:600}
+.aging-status{margin:0}
+.aging-list>li>button{justify-self:start}
+.aging-OBJETIVO_ALCANZADO{border-left-color:#b42318!important}
+.aging-PRIORITARIO{border-left-color:#c56a00!important}
+.aging-PREPARAR{border-left-color:#8a7a00!important}
+.aging-EN_PLAZO{border-left-color:#2e7d32!important}
+/* Cambios con proveedor (CMB-01). */
+.exchange-form h2:focus{outline:2px solid var(--ink);outline-offset:4px}
+.exchange-replacement{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.exchange-list{display:grid;gap:10px}
+.exchange-action{display:grid;gap:8px;border-top:1px solid var(--line);padding-top:8px}
+.receive-lines{display:grid;gap:8px;margin:8px 0}.receive-lines small{color:#4f5751}
