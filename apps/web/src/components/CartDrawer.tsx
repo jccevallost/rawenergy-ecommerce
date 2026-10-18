@@ -1,9 +1,10 @@
-import { ApolloError, useLazyQuery, useMutation, useQuery } from "@apollo/client";
+import { ApolloError, useApolloClient, useLazyQuery, useMutation, useQuery } from "@apollo/client";
 import { ArrowLeft, ArrowRight, CheckCircle2, Clock3, MessageCircle, Minus, Plus, ShoppingBag, Tag, Trash2, X } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { checkoutAttempt, findCheckoutAttempt, lineCap, CALCULATE_CART_TOTALS, CHECK_EMAIL, CHECKOUT_INFO, CREATE_CHECKOUT_ORDER, type CartTotals, type CheckoutInfo, type Order, useCartOrchestrator } from "@vital-forge/shared-logic";
+import { checkoutAttempt, findCheckoutAttempt, lineCap, ADD_MY_ADDRESS, type AuthUser, CALCULATE_CART_TOTALS, CHECK_EMAIL, CHECKOUT_INFO, CREATE_CHECKOUT_ORDER, type CartTotals, type CheckoutInfo, type CustomerProfile, MY_PROFILE, type Order, UPDATE_MY_BILLING, UPDATE_MY_CONTACT, useCartOrchestrator } from "@vital-forge/shared-logic";
 import { formatMoney } from "@vital-forge/ui-core";
 import { ShippingProgress } from "./ShippingProgress";
+import { initialChoice, type SavedChoice, SavedDetails } from "./checkout/SavedDetails";
 import { Turnstile } from "./Turnstile";
 import { catalogHref } from "../lib/catalogUrl";
 import { friendlyError } from "../lib/errors";
@@ -27,7 +28,8 @@ type CheckoutForm = {
   idType: IdType;
   idNumber: string;
   shippingMethod: "EXPRESS_QUITO_VALLES" | "SERVIENTREGA_NATIONAL";
-  paymentMethod: "BANK_TRANSFER" | "CASH_ON_DELIVERY";
+  // "" = sin elegir: pasa cuando contra entrega deja de aplicar y la persona debe elegir otra (CU08).
+  paymentMethod: "BANK_TRANSFER" | "CASH_ON_DELIVERY" | "";
   notes: string;
   paymentReference: string;
 };
@@ -43,7 +45,7 @@ const missingMessages: Record<string, string> = {
   city: "Elige tu ciudad.",
   address: "Escribe la dirección exacta: calle principal, número y calle secundaria."
 };
-const fieldOrder = ["idNumber", "fullName", "phone", "email", "province", "city", "address"] as const;
+const fieldOrder = ["idNumber", "billingName", "fullName", "phone", "email", "province", "city", "address", "addressLabel", "recipientName", "recipientPhone", "paymentMethod"] as const;
 
 const initialCheckout: CheckoutForm = {
   fullName: "",
@@ -61,10 +63,69 @@ const initialCheckout: CheckoutForm = {
   paymentReference: ""
 };
 
-export function CartDrawer() {
+export function CartDrawer({ user = null, onLogin }: { user?: AuthUser | null; onLogin?: () => void }) {
   const { items, isOpen, view, toggleCart, totals: localTotals, setQuantity, removeItem, consume, notice, itemCount } = useCartOrchestrator();
   const [step, setStep] = useState<"cart" | "checkout" | "success">("cart");
   const [form, setForm] = useState<CheckoutForm>(initialCheckout);
+  const client = useApolloClient();
+  // CU08: con sesión de cliente se usan los datos guardados; la compra sin cuenta no cambia.
+  const customer = user?.role === "CUSTOMER" ? user : null;
+  const profileQuery = useQuery<{ myProfile: CustomerProfile }>(MY_PROFILE, { skip: !customer || !isOpen, fetchPolicy: "cache-and-network" });
+  const profile = customer ? profileQuery.data?.myProfile ?? null : null;
+  const [mode, setMode] = useState<"saved" | "manual" | "ask">("manual");
+  const [choice, setChoice] = useState<SavedChoice | null>(null);
+  const [saveNotice, setSaveNotice] = useState("");
+  const [paymentNotice, setPaymentNotice] = useState("");
+  const [sessionNotice, setSessionNotice] = useState("");
+  // Primera vez que llega el perfil de esta cuenta: con el formulario vacío se usan los datos guardados; si la
+  // persona ya escribió algo (p. ej. entró a mitad de la compra), se le pregunta antes de reemplazarlo.
+  const profileFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!profile || !customer || profileFor.current === customer.id) return;
+    profileFor.current = customer.id;
+    setChoice(initialChoice(profile));
+    setMode(form.fullName || form.email || form.phone || form.address || form.idNumber ? "ask" : "saved");
+  }, [profile, customer]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Al cerrar sesión o cambiar de cuenta no quedan los datos de la anterior en el formulario.
+  const lastCustomer = useRef(customer?.id ?? null);
+  useEffect(() => {
+    const id = customer?.id ?? null;
+    if (lastCustomer.current === id) return;
+    const had = lastCustomer.current;
+    lastCustomer.current = id;
+    // Entró a mitad de la compra: la confirmación va aquí, junto a sus datos.
+    if (!had) { if (id && customer && step === "checkout") setSessionNotice(`Sesión iniciada, ${customer.name.trim().split(/\s+/)[0]}.`); return; }
+    setSessionNotice("");
+    setForm(current => ({ ...initialCheckout, shippingMethod: current.shippingMethod, paymentMethod: current.paymentMethod, notes: current.notes }));
+    setChoice(null); setMode("manual"); profileFor.current = null;
+  }, [customer?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const savedMode = mode === "saved" && !!profile && !!choice;
+  const selected = savedMode && choice!.addressId !== "new" ? profile!.addresses.find(address => address.id === choice!.addressId) ?? null : null;
+  // Una dirección que ya no existe (borrada en otra pestaña) vuelve a la predeterminada; nunca a otra en silencio sin avisar.
+  useEffect(() => {
+    if (profile && choice && choice.addressId !== "new" && !profile.addresses.some(address => address.id === choice.addressId)) {
+      setChoice(current => current && ({ ...current, addressId: profile.defaultAddressId ?? profile.addresses[0]?.id ?? "new" }));
+      setFieldErrors(current => ({ ...current, deliveryAddressId: "La dirección que habías elegido ya no está en tu cuenta. Revisa la entrega." }));
+    }
+  }, [profile, choice]);
+  const billingSaved = savedMode && !choice!.changeBilling && profile!.billing ? profile!.billing : null;
+  // Los datos guardados llenan el formulario base: así envío, express, validación y huella funcionan igual.
+  useEffect(() => {
+    if (!savedMode) return;
+    setForm(current => {
+      const next = { ...current, fullName: profile!.name, email: profile!.email, phone: profile!.phone || current.phone,
+        ...(billingSaved ? { idType: billingSaved.idType as IdType, idNumber: billingSaved.idNumber } : {}),
+        ...(selected ? { province: selected.province, city: selected.city, address: selected.address, reference: selected.reference } : {}) };
+      if (!isExpressArea(next.province, next.city)) next.shippingMethod = "SERVIENTREGA_NATIONAL";
+      return (Object.keys(next) as Array<keyof CheckoutForm>).every(key => next[key] === current[key]) ? current : next;
+    });
+  }, [savedMode, profile, billingSaved, selected]);
+  const updateChoice = (patch: Partial<SavedChoice>) => {
+    setFieldErrors(current => ({ ...current, ...Object.fromEntries(Object.keys(patch).map(key => [key, ""])), deliveryAddressId: "" }));
+    // «Otra dirección» empieza vacía: no se presenta una localidad por defecto como confirmada.
+    if (patch.addressId === "new" && choice?.addressId !== "new") setForm(current => ({ ...current, province: "", city: "", address: "", reference: "", shippingMethod: "SERVIENTREGA_NATIONAL" }));
+    setChoice(current => current && ({ ...current, ...patch }));
+  };
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
   const submittingRef = useRef(false);
   const [submitting, setSubmitting] = useState(false);
@@ -92,6 +153,8 @@ export function CartDrawer() {
   // correo configurado: no se le puede decir que le llegara un correo si no.
   const { data: checkoutData } = useQuery<{ checkoutInfo: CheckoutInfo }>(CHECKOUT_INFO);
   const checkoutInfo = checkoutData?.checkoutInfo;
+  // CUENTA-BIENVENIDA-01: el código de primera compra no se ofrece a una cuenta que ya compró (a invitados sí: no se sabe).
+  const welcomeOffered = Boolean(checkoutInfo?.welcomeDiscount) && !(customer && profile?.firstPurchase === false);
   const shippingLabel = (method: CheckoutForm["shippingMethod"]) => {
     const rate = checkoutInfo?.shippingRates.find(item => item.method === method);
     if (!rate || !checkoutInfo) return "se calcula al seleccionar";
@@ -113,12 +176,23 @@ export function CartDrawer() {
   const codeRejected = discountCode && serverTotals && !serverTotals.discountCode ? serverTotals.discountMessage ?? "Ese código no aplica." : null;
   const applyCode = () => { const value = codeDraft.trim().toUpperCase(); setDiscountNotice(null); setDiscountCode(value); };
   const removeCode = () => { setDiscountCode(""); setCodeDraft(""); setDiscountNotice(null); requestAnimationFrame(() => document.getElementById("checkout-discount")?.focus()); };
+  // CU07/CU08: dirección guardada por id y versión, destinatario distinto y factura a otro nombre.
+  const billingName = (billingSaved?.name ?? choice?.billingName ?? "").trim();
+  const savedExtras = useMemo(() => {
+    if (!savedMode || !choice) return {};
+    const recipient = choice.otherRecipient ? { recipientName: choice.recipientName.trim(), recipientPhone: normalizeMobile(choice.recipientPhone) } : {};
+    return {
+      ...(selected || choice.otherRecipient ? { delivery: { ...(selected ? { addressId: selected.id, addressUpdatedAt: selected.updatedAt } : {}), ...recipient } } : {}),
+      ...(billingName && billingName !== form.fullName.trim() ? { billing: { name: billingName, idType: form.idType, idNumber: normalizeIdentification(form.idType, form.idNumber) } } : {})
+    };
+  }, [savedMode, choice, selected, billingName, form.fullName, form.idType, form.idNumber]);
   const checkoutInput = useMemo(() => ({
     customer: { fullName: form.fullName.trim(), email: form.email.trim(), phone: normalizeMobile(form.phone), province: form.province, city: form.city, address: form.address.trim(), reference: form.reference.trim(), idType: form.idType, idNumber: normalizeIdentification(form.idType, form.idNumber) },
     items: cartItemsInput,
     shippingMethod: form.shippingMethod, paymentMethod: form.paymentMethod, notes: form.notes.trim(), paymentReference: form.paymentMethod === "BANK_TRANSFER" && checkoutInfo?.bank ? form.paymentReference.trim() : "",
-    ...(appliedCode ? { discountCode: appliedCode } : {})
-  }), [form, cartItemsInput, appliedCode]);
+    ...(appliedCode ? { discountCode: appliedCode } : {}),
+    ...savedExtras
+  }), [form, cartItemsInput, appliedCode, savedExtras]);
   useEffect(() => {
     let active = true;
     void findCheckoutAttempt(checkoutInput).then(attempt => { if (active) setRetryInput(attempt ? checkoutInput : null); }).catch(() => { if (active) setRetryInput(null); });
@@ -210,9 +284,13 @@ export function CartDrawer() {
   const codReason = !cod?.enabled ? "No disponible por ahora."
     : cod.expressOnly && form.shippingMethod !== "EXPRESS_QUITO_VALLES" ? "Solo con envío express en Quito y Valles."
     : cod.minimumSubtotal > 0 && productsPaid <= cod.minimumSubtotal ? `En compras de más de ${formatMoney(cod.minimumSubtotal)}.` : null;
-  // Si deja de cumplir la regla (cambio de provincia, envío o cantidades), vuelve a transferencia.
+  // CU08: si contra entrega deja de cumplir la regla (provincia, envío o cantidades), no se cambia en silencio
+  // a transferencia: se explica el motivo y se pide elegir otra forma de pago.
   useEffect(() => {
-    if (form.paymentMethod === "CASH_ON_DELIVERY" && codReason) setForm(current => ({ ...current, paymentMethod: "BANK_TRANSFER" }));
+    if (form.paymentMethod !== "CASH_ON_DELIVERY" || !codReason) return;
+    setForm(current => ({ ...current, paymentMethod: "" }));
+    const reason = codReason.replace(/\.$/, "");
+    setPaymentNotice(`Contra entrega ya no está disponible para este pedido: ${reason.charAt(0).toLowerCase()}${reason.slice(1)}. Elige otra forma de pago.`);
   }, [form.paymentMethod, codReason]);
   const explore = () => { close(); navigate(catalogHref()); };
   // Carrito vaciado durante la entrega (otra pestaña compró o lo vació): sin esto quedaba en
@@ -222,6 +300,29 @@ export function CartDrawer() {
     if (step === "checkout" && !items.length && !submittingRef.current) { setStep("cart"); setEmptiedDuringCheckout(true); }
     if (items.length) setEmptiedDuringCheckout(false);
   }, [step, items.length]);
+  /**
+   * CU08: guarda en la cuenta solo lo que la persona marcó, después de crear el pedido. Un fallo aquí no afecta
+   * al pedido: se informa para que lo haga desde Mi cuenta.
+   */
+  const saveChoices = async (base: CustomerProfile, picked: SavedChoice, typed: CheckoutForm, invoiceName: string) => {
+    let revision = base.revision;
+    const failed: string[] = [];
+    const run = async <T,>(label: string, mutation: Parameters<typeof client.mutate>[0]["mutation"], variables: Record<string, unknown>, pick: (data: T) => CustomerProfile) => {
+      try {
+        const { data } = await client.mutate<T>({ mutation, variables: { ...variables, revision } });
+        const next = pick(data!);
+        revision = next.revision;
+        client.writeQuery({ query: MY_PROFILE, data: { myProfile: next } });
+      } catch { failed.push(label); }
+    };
+    if (picked.savePhone && !base.phone) await run<{ updateMyContact: CustomerProfile }>("tu celular", UPDATE_MY_CONTACT, { input: { name: base.name, phone: normalizeMobile(typed.phone), altPhone: base.altPhone } }, data => data.updateMyContact);
+    if (picked.saveBilling && picked.changeBilling) await run<{ updateMyBilling: CustomerProfile }>("tus datos de factura", UPDATE_MY_BILLING, { input: { name: invoiceName, idType: typed.idType, idNumber: normalizeIdentification(typed.idType, typed.idNumber) } }, data => data.updateMyBilling);
+    if (picked.saveAddress && picked.addressId === "new") await run<{ addMyAddress: { profile: CustomerProfile } }>("la dirección", ADD_MY_ADDRESS, { input: { label: picked.addressLabel.trim(), province: typed.province, city: typed.city, address: typed.address.trim(), reference: typed.reference.trim(), ...(picked.otherRecipient ? { recipientName: picked.recipientName.trim(), recipientPhone: normalizeMobile(picked.recipientPhone) } : {}) }, makeDefault: !base.defaultAddressId }, data => data.addMyAddress.profile);
+    if (picked.savePhone || (picked.saveBilling && picked.changeBilling) || (picked.saveAddress && picked.addressId === "new")) {
+      setSaveNotice(failed.length ? `Tu pedido quedó registrado, pero no pudimos guardar ${failed.join(", ")} en tu cuenta. Puedes hacerlo desde Mi cuenta.` : "Guardamos en tu cuenta lo que marcaste.");
+    }
+  };
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (submittingRef.current || !items.length || (!totalsReady && !canRetry)) return;
@@ -235,6 +336,16 @@ export function CartDrawer() {
     if (!form.city) errors.city = "Elige tu ciudad.";
     const idIssue = identificationProblem(form.idType, form.idNumber);
     if (idIssue) errors.idNumber = idIssue;
+    if (!form.paymentMethod) errors.paymentMethod = "Elige la forma de pago.";
+    if (savedMode && choice) {
+      if (!billingSaved && choice.billingName.trim().length < 3) errors.billingName = "Escribe el nombre o razón social de la factura.";
+      if (choice.addressId === "new" && choice.saveAddress && !choice.addressLabel.trim()) errors.addressLabel = "Ponle un nombre, por ejemplo Casa u Oficina.";
+      if (choice.otherRecipient) {
+        if (choice.recipientName.trim().length < 3) errors.recipientName = "Escribe el nombre de quien recibe.";
+        const recipientIssue = mobileProblem(choice.recipientPhone);
+        if (recipientIssue) errors.recipientPhone = recipientIssue;
+      }
+    }
     // Un campo vacío recibe su mensaje propio en vez del de formato.
     for (const key of Object.keys(missingMessages) as (keyof CheckoutForm)[]) if (!String(form[key] ?? "").trim()) errors[key] = missingMessages[key]!;
     const first = fieldOrder.find(key => errors[key]);
@@ -250,6 +361,7 @@ export function CartDrawer() {
     submittingRef.current = true;
     setSubmitting(true);
     setSubmitError(null);
+    setSaveNotice(""); setSessionNotice("");
     try {
     const attempt = totalsReady ? await checkoutAttempt(checkoutInput, serverTotals?.total) : await findCheckoutAttempt(checkoutInput);
     submittedAttempt = attempt;
@@ -262,6 +374,7 @@ export function CartDrawer() {
     setRetryInput(null);
     setCreatedOrder(order);
     rememberLastOrder(order.orderNumber, purchasedItems);
+    if (savedMode && profile && choice) void saveChoices(profile, choice, { ...form }, billingName);
     // Sin sesión: se recuerda para enlazarlo a la cuenta si luego entra o se registra (C44).
     if (!hasSession()) rememberGuestOrder(order.orderNumber);
     repeatConfirmed.current = false; setRepeatOf(null);
@@ -270,6 +383,10 @@ export function CartDrawer() {
     } catch (error) {
       if (error instanceof ApolloError && error.graphQLErrors.some(issue => issue.extensions?.code === "CART_TOTAL_CHANGED")) {
         submittedAttempt?.complete(); setRetryInput(null); void totalsQuery.refetch();
+      }
+      // CU08: la dirección guardada cambió en otra pestaña. No se creó el pedido: se carga la versión actual.
+      if (error instanceof ApolloError && error.graphQLErrors.some(issue => issue.extensions?.code === "CONFLICT")) {
+        submittedAttempt?.complete(); setRetryInput(null); void profileQuery.refetch();
       }
       // El código es solo para la primera compra: se quita y se muestra el total sin descuento para confirmar de nuevo.
       const notEligible = error instanceof ApolloError ? error.graphQLErrors.find(issue => issue.extensions?.code === "DISCOUNT_NOT_ELIGIBLE") : undefined;
@@ -280,7 +397,8 @@ export function CartDrawer() {
         return;
       }
       const field = error instanceof ApolloError ? error.graphQLErrors.find(issue => issue.extensions?.field)?.extensions?.field as string | undefined : undefined;
-      if (field && error instanceof ApolloError) {
+      // CU08: con datos guardados algunos campos no están en pantalla (p. ej. el correo); su error va al aviso general.
+      if (field && error instanceof ApolloError && (field === "deliveryAddressId" || document.getElementById(`checkout-${field}`))) {
         setFieldErrors(current => ({ ...current, [field]: error.graphQLErrors[0]?.message ?? "Revisa este dato." }));
         requestAnimationFrame(() => document.getElementById(`checkout-${field}`)?.focus());
       } else setSubmitError(error instanceof Error ? error : new Error("No se pudo crear el pedido. Tus datos se conservan para volver a intentarlo."));
@@ -355,7 +473,18 @@ export function CartDrawer() {
 
         {step === "checkout" && (
           <form className="drawer-body checkout-form" id="checkout-form" onSubmit={submit} noValidate>
-            <p className="muted">Compra sin crear una cuenta. Al confirmar, terminas tu compra por WhatsApp con nuestro equipo{bankOnWeb ? "" : ": ahí te damos los datos para pagar"}.</p>
+            <p className="muted">{savedMode ? "Usamos los datos de tu cuenta; cambia solo lo que necesites." : "Compra sin crear una cuenta."} Al confirmar, terminas tu compra por WhatsApp con nuestro equipo{bankOnWeb ? "" : ": ahí te damos los datos para pagar"}.</p>
+            {sessionNotice && <p className="notice notice-success" role="status">{sessionNotice}</p>}
+            {customer && profile && mode === "ask" && (
+              <div className="notice saved-ask" role="group" aria-label="Datos guardados en tu cuenta">
+                <span>Tienes datos guardados en tu cuenta. ¿Quieres usarlos en lugar de lo que escribiste?</span>
+                <span className="repeat-actions">
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => { setMode("saved"); setFieldErrors({}); }}>Usar mis datos guardados</button>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => setMode("manual")}>Conservar lo que escribí</button>
+                </span>
+              </div>
+            )}
+            {!customer && checkoutInfo?.customerAccounts && onLogin && <p className="field-help"><button type="button" className="btn-link" onClick={onLogin}>¿Tienes cuenta? Entra para usar tus datos guardados</button> Tu carrito se conserva.</p>}
             <div className="order-summary">
               <div><span>{units}</span><span>{formatMoney(totals.subtotal)}</span></div>
               {totalsReady && appliedCode && totals.discount > 0 && <div className="summary-discount"><span>Descuento {appliedCode} ({serverTotals?.discountPercent} %)</span><span>−{formatMoney(totals.discount)}</span></div>}
@@ -369,7 +498,7 @@ export function CartDrawer() {
                 <>
                   <label className="field" htmlFor="checkout-discount">Código de descuento <small className="field-help">(opcional)</small></label>
                   {/* El código anunciado se ofrece como botón: como texto de ejemplo parecía ya escrito (C63, V23). */}
-                  {checkoutInfo?.welcomeDiscount?.code && !discountCode && <button type="button" className="btn btn-outline btn-sm discount-suggest" disabled={totalsQuery.loading} onClick={() => { const code = checkoutInfo.welcomeDiscount!.code!; setCodeDraft(code); setDiscountNotice(null); setDiscountCode(code); }}><Tag size={16} aria-hidden="true" /> Usar {checkoutInfo.welcomeDiscount.code} ({checkoutInfo.welcomeDiscount.percent} % en tu primera compra)</button>}
+                  {welcomeOffered && checkoutInfo?.welcomeDiscount?.code && !discountCode && <button type="button" className="btn btn-outline btn-sm discount-suggest" disabled={totalsQuery.loading} onClick={() => { const code = checkoutInfo.welcomeDiscount!.code!; setCodeDraft(code); setDiscountNotice(null); setDiscountCode(code); }}><Tag size={16} aria-hidden="true" /> Usar {checkoutInfo.welcomeDiscount.code} ({checkoutInfo.welcomeDiscount.percent} % en tu primera compra)</button>}
                   <div className="discount-row">
                     <input id="checkout-discount" value={codeDraft} onChange={event => setCodeDraft(event.target.value)} onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); applyCode(); } }} autoCapitalize="characters" autoComplete="off" spellCheck={false} maxLength={30} placeholder="Escribe tu código" aria-invalid={codeRejected ? true : undefined} aria-describedby={codeRejected || discountNotice ? "discount-message" : undefined} />
                     <button type="button" className="btn btn-outline" disabled={!codeDraft.trim() || totalsQuery.loading} onClick={applyCode}>Aplicar</button>
@@ -379,6 +508,7 @@ export function CartDrawer() {
               )}
             </div>
             <fieldset className="plain-fieldset" disabled={submitting}>
+              {savedMode ? <SavedDetails profile={profile!} choice={choice!} form={form} errors={fieldErrors} onChoice={updateChoice} onForm={(key, value) => change(key, value as never)} /> : <>
               <div className="form-grid">
                 <label className="field"><span id="label-idType">Documento (factura)</span><select {...fieldHelp("idType")} name="idType" value={form.idType} onChange={(event) => { change("idType", event.target.value as IdType); setFieldErrors(current => ({ ...current, idNumber: "" })); }}>
                   {ID_TYPES.map(([value, label]) => <option key={value} value={value}>{label}{value === "PASAPORTE" ? " (extranjeros)" : ""}</option>)}
@@ -400,6 +530,7 @@ export function CartDrawer() {
                 <label className="field full"><span id="label-address">Dirección exacta</span><input {...fieldHelp("address")} name="address" autoComplete="street-address" minLength={8} maxLength={240} value={form.address} onChange={(event) => change("address", event.target.value)} placeholder="Calle principal, número y calle secundaria" required />{fieldError("address")}</label>
                 <label className="field full"><span id="label-reference">Referencia (opcional)</span><input {...fieldHelp("reference")} name="reference" maxLength={180} value={form.reference} onChange={(event) => change("reference", event.target.value)} placeholder="Casa, edificio, local, horarios" />{fieldError("reference")}</label>
               </div>
+              </>}
               <p id="address-help" className="field-help">El envío express cubre Quito (con Cumbayá, Tumbaco y Conocoto) y Rumiñahui (Sangolquí). Para el resto del país enviamos por Servientrega.</p>
               <fieldset className="delivery-options">
                 <legend>Entrega</legend>
@@ -408,10 +539,12 @@ export function CartDrawer() {
               </fieldset>
               <fieldset className="delivery-options payment-options">
                 <legend>Forma de pago</legend>
-                <label className="choice"><input type="radio" name="paymentMethod" checked={form.paymentMethod === "BANK_TRANSFER"} onChange={() => change("paymentMethod", "BANK_TRANSFER")} /><span><b>Transferencia bancaria</b><small>{bankOnWeb ? `Al confirmar ves los datos de la cuenta y envías el comprobante${whatsapp ? " por WhatsApp" : ""}.` : "Te damos los datos de la cuenta por WhatsApp al confirmar."}</small></span></label>
-                {cod?.enabled && <label className="choice"><input type="radio" name="paymentMethod" disabled={!!codReason} checked={form.paymentMethod === "CASH_ON_DELIVERY"} onChange={() => change("paymentMethod", "CASH_ON_DELIVERY")} /><span><b>Contra entrega</b><small>{codReason ?? "Pagas al recibir; confirmas el pedido por WhatsApp."}</small></span></label>}
+                {paymentNotice && <p className="field-error" role="alert">{paymentNotice}</p>}
+                {fieldErrors.paymentMethod && <p id="error-paymentMethod" className="field-error">{fieldErrors.paymentMethod}</p>}
+                <label className="choice"><input type="radio" id="checkout-paymentMethod" name="paymentMethod" aria-describedby={fieldErrors.paymentMethod ? "error-paymentMethod" : undefined} checked={form.paymentMethod === "BANK_TRANSFER"} onChange={() => { setPaymentNotice(""); change("paymentMethod", "BANK_TRANSFER"); }} /><span><b>Transferencia bancaria</b><small>{bankOnWeb ? `Al confirmar ves los datos de la cuenta y envías el comprobante${whatsapp ? " por WhatsApp" : ""}.` : "Te damos los datos de la cuenta por WhatsApp al confirmar."}</small></span></label>
+                {cod?.enabled && <label className="choice"><input type="radio" name="paymentMethod" disabled={!!codReason} checked={form.paymentMethod === "CASH_ON_DELIVERY"} onChange={() => { setPaymentNotice(""); change("paymentMethod", "CASH_ON_DELIVERY"); }} /><span><b>Contra entrega</b><small>{codReason ?? "Pagas al recibir; confirmas el pedido por WhatsApp."}</small></span></label>}
               </fieldset>
-              {form.paymentMethod === "BANK_TRANSFER" ? (
+              {!form.paymentMethod ? null : form.paymentMethod === "BANK_TRANSFER" ? (
                 <div className="payment-box">
                   <p>{bankOnWeb ? "Despachamos cuando validamos el pago. No se abre una pasarela ni se cobra automáticamente." : whatsapp ? "Al confirmar te llevamos a WhatsApp con tu pedido; ahí recibes los datos para transferir. Despachamos cuando validamos el pago." : "Al confirmar te contactamos con los datos para transferir. Despachamos cuando validamos el pago."}</p>
                   <p className="reserve-note"><Clock3 size={16} aria-hidden="true" /><span>Reservamos tus productos durante {hours} horas. Si el pago no llega en ese plazo, el pedido se cancela automáticamente.</span></p>
@@ -448,6 +581,7 @@ export function CartDrawer() {
           <div className="drawer-body order-success">
             <CheckCircle2 size={40} aria-hidden="true" />
             <p className="eyebrow">Pedido {createdOrder.orderNumber}</p>
+            {saveNotice && <p className={`notice ${saveNotice.startsWith("Tu pedido quedó registrado, pero") ? "notice-error" : "notice-success"}`} role="status">{saveNotice}</p>}
             <h3>{whatsapp ? onDelivery ? "Pedido registrado. Confírmalo por WhatsApp y envíanos tu ubicación." : `Pedido registrado. Continúa por WhatsApp para ${bankOnWeb ? "enviar tu comprobante" : "recibir los datos de pago"}.` : onDelivery ? "Tu pedido está registrado. Pagas al recibirlo." : "Tu pedido está registrado y pendiente de pago."}</h3>
             {whatsapp && (
               <a className="btn btn-primary btn-block btn-lg whatsapp-continue" target="_blank" rel="noopener noreferrer" href={whatsappHref(whatsapp, orderWhatsappMessage(createdOrder, { bankShown: bankOnWeb }))}>
@@ -479,7 +613,7 @@ export function CartDrawer() {
           <footer className="drawer-foot">
             <div className="total-line"><span>Subtotal</span><strong>{formatMoney(totals.subtotal)}</strong></div>
             <small>El envío se calcula en el siguiente paso. No necesitas crear una cuenta.</small>
-            {checkoutInfo?.welcomeDiscount && <p className="welcome-hint"><Tag size={16} aria-hidden="true" />{checkoutInfo.welcomeDiscount.code ? <span>¿Primera compra? Usa el código <b>{checkoutInfo.welcomeDiscount.code}</b> en el siguiente paso: {checkoutInfo.welcomeDiscount.percent} % de descuento.</span> : <span>¿Tienes un código de descuento? Lo aplicas en el siguiente paso.</span>}</p>}
+            {welcomeOffered && checkoutInfo?.welcomeDiscount && <p className="welcome-hint"><Tag size={16} aria-hidden="true" />{checkoutInfo.welcomeDiscount.code ? <span>¿Primera compra? Usa el código <b>{checkoutInfo.welcomeDiscount.code}</b> en el siguiente paso: {checkoutInfo.welcomeDiscount.percent} % de descuento.</span> : <span>¿Tienes un código de descuento? Lo aplicas en el siguiente paso.</span>}</p>}
             <button type="button" className="btn btn-primary btn-block btn-lg checkout" onClick={() => setStep("checkout")}>Continuar con la entrega <ArrowRight size={18} aria-hidden="true" /></button>
           </footer>
         )}

@@ -2,7 +2,7 @@
 # Configuración en GitHub (Settings → Secrets and variables → Actions):
 #   secreto  AZURE_STATIC_WEB_APPS_API_TOKEN_LIVELY_FLOWER_016983B10
 #            token de despliegue de la tienda; lo creó Azure al enlazar el recurso lively-flower-016983b10 con GitHub
-#   variable VITE_GRAPHQL_URL                         https://<api-en-render>/graphql
+#   variable VITE_GRAPHQL_URL                         https://rawenergy-api-prod.azurewebsites.net/graphql
 #   variable VITE_ADMIN_URL                           https://<panel-en-azure>
 # Pasos completos en docs/despliegue-web.md.
 name: Tienda en Azure

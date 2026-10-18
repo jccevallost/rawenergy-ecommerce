@@ -63,7 +63,7 @@ describe("Abuso a través de GraphQL", () => {
   });
 
   it("tampoco puede combinar un pedido con otro acceso ni pedir más campos raíz que el máximo", async () => {
-    const mixed = await execute('mutation { login(input:{email:"a@b.co",password:"x"}){token} register(input:{name:"Ana",email:"a@b.co",password:"12345678"}){token} }');
+    const mixed = await execute('mutation { login(input:{email:"a@b.co",password:"x"}){token} register(input:{name:"Ana",email:"a@b.co",password:"12345678"}){accepted} }');
     expect(mixed.errors?.[0]?.message).toBe("Solo se permite un acceso, registro o pedido por solicitud.");
     const wide = await execute(`{ ${Array.from({ length: MAX_ROOT_FIELDS + 1 }, (_, i) => `h${i}: health`).join(" ")} }`);
     expect(wide.errors?.[0]?.message).toMatch(/el máximo es 10/);

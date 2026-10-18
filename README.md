@@ -18,7 +18,7 @@ packages/
 
 ## Arranque rápido
 
-Requisitos: Node.js 20 o posterior y npm 11.
+Requisitos: Node.js 22.15 o posterior y npm 11.
 
 ```bash
 npm install
@@ -140,14 +140,14 @@ El panel avisa en Configuracion cuando ningun canal esta configurado, porque en 
 
 ### API
 
-`render.yaml` es un blueprint listo para Render: instala en la raíz del monorepo (con las dependencias de desarrollo, que la compilación necesita), compila el workspace de la API con Node 22 en la región de Virginia, la más cercana a Atlas, y expone `/health` como health check. La guía paso a paso está en [docs/despliegue-web.md](docs/despliegue-web.md).
+La API corre en **Azure App Service** (Linux, Node 22, Brasil Sur, la región más cercana a Atlas) desde el 17/10/2026; Render quedó retirado. El paquete se prepara con `node scripts/prepare-azure-staging.mjs --perfil=produccion --online --linux-ready`, que compila el workspace de la API, fija las dependencias con el lock probado, verifica los módulos nativos en Linux y agrega un arranque que solo acepta la base de producción. Pasos y variables en [docs/despliegue-web.md](docs/despliegue-web.md).
 
 Variables obligatorias en producción, sin las cuales la API se niega a arrancar:
 
 | Variable | Para qué sirve |
 | --- | --- |
 | `MONGODB_URI` | Persistencia real. Sin ella el arranque falla en lugar de servir el catálogo demo. |
-| `AUTH_TOKEN_SECRET` | Firma de los tokens, mínimo 32 caracteres. Render puede generarlo. |
+| `AUTH_TOKEN_SECRET` | Firma de los tokens y cifrado del segundo factor del personal, mínimo 32 caracteres. Se guarda solo en la configuración de Azure. |
 | `ADMIN_PASSWORD` | Contraseña de la cuenta administradora inicial. |
 | `CORS_ORIGINS` | Dominios de la tienda y del panel, separados por coma. |
 | `PUBLIC_API_URL` | Dominio público de la API. Se usa para construir las URL de las fotos subidas. |
@@ -160,11 +160,11 @@ Ambas SPA se publican en Azure Static Web Apps con los flujos de GitHub Actions 
 
 ```bash
 # apps/web
-VITE_GRAPHQL_URL=https://rawenergy-api.onrender.com/graphql
+VITE_GRAPHQL_URL=https://rawenergy-api-prod.azurewebsites.net/graphql
 VITE_ADMIN_URL=https://<panel>.azurestaticapps.net
 
 # apps/admin
-VITE_GRAPHQL_URL=https://rawenergy-api.onrender.com/graphql
+VITE_GRAPHQL_URL=https://rawenergy-api-prod.azurewebsites.net/graphql
 VITE_WEB_URL=https://<tienda>.azurestaticapps.net
 ```
 
@@ -172,9 +172,23 @@ Esos dos dominios de Azure son los que deben ir en `CORS_ORIGINS` de la API. Las
 
 ### Orden de despliegue
 
-1. En Atlas, autoriza las IP de salida de Render (Connect → Outbound del servicio).
-2. Despliega la API con `render.yaml`, carga las variables de la tabla anterior y apunta `PUBLIC_API_URL` al dominio que te asignó Render.
+1. En Atlas, autoriza las IP de salida de la app de Azure (`outboundIpAddresses`).
+2. Prepara y despliega la API en Azure App Service, carga las variables de la tabla anterior y apunta `PUBLIC_API_URL` a su dominio `azurewebsites.net`.
 3. Crea en Azure dos Static Web Apps con origen «Otro», guarda sus tokens y las variables `VITE_*` en GitHub y ejecuta los dos flujos.
 4. Vuelve a la API y pon los dos dominios de Azure en `CORS_ORIGINS`, `STORE_URL` y `ADMIN_APP_URL`.
 
 El paso 4 va al final a propósito: hasta que Azure no asigna los dominios no se sabe qué autorizar. Detalle de cada paso en [docs/despliegue-web.md](docs/despliegue-web.md).
+
+## Programa de Windows, apps Android y respaldos
+
+El programa de Windows y las apps abren el panel y la tienda publicados en una ventana propia; cada despliegue web les llega sin reinstalar. Se identifican con `RawEnergyShell/<plataforma>/<versión>` y la API puede exigir una versión mínima con `MIN_CLIENT_VERSIONS` (JSON, por ejemplo `{"panel-android":"1.0.0"}`): una versión anterior consulta pero no escribe.
+
+| Comando | Resultado | Requisitos |
+| --- | --- | --- |
+| `npm run build:windows -w @vital-forge/desktop` | Instalador `.exe` (NSIS, por usuario). En Windows 7 u 8 deja un acceso al panel en Firefox ESR | En macOS: `rustup` con `x86_64-pc-windows-msvc`, `cargo-xwin`, `llvm` y `makensis`. En Windows: Rust. También el flujo manual «Programa de Windows» de GitHub Actions |
+| `npm run build:admin -w @vital-forge/mobile` | APK firmado de «RawEnergy Gestión» en `~/RawEnergy-instaladores` | Android SDK y Java 21 (`brew install openjdk@21`). La clave de firma se crea en `~/RawEnergy-firma`: respáldala con su contraseña |
+| `npm run build:tienda -w @vital-forge/mobile` | APK firmado de la tienda «RawEnergy» | Igual que el anterior |
+| `npm run respaldo` | Copia cifrada de la base en `~/RawEnergy-respaldos` (solo lectura) | `MONGODB_URI` en `apps/api/.env` o `RESPALDO_MONGODB_URI` |
+| `npm run respaldo:probar -- <archivo>` | Restaura la copia en una base temporal local y la verifica | `npm i --no-save mongodb-memory-server@11` |
+
+`RAWENERGY_PANEL_URL`, `RAWENERGY_STORE_URL` y `RAWENERGY_APP_VERSION` cambian las direcciones y la versión al compilar. Las copias `.respaldo` nunca se suben al repositorio.

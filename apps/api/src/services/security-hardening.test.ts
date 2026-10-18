@@ -88,8 +88,9 @@ describe("Acceso y bloqueo de cuentas (S03, S07)", () => {
     const created = await authService.saveAccount(admin, undefined, { name: "Hash viejo", email: "hash-viejo@example.test", password: "Contraseña-antigua-1", role: "CUSTOMER", status: "ACTIVE" });
     const salt = crypto.randomBytes(16).toString("base64url");
     const key = crypto.scryptSync("Contraseña-antigua-1", salt, 64);
-    const memory = (authService as unknown as { memoryUsers: Array<{ id: string; passwordHash: string }> }).memoryUsers;
+    const memory = (authService as unknown as { memoryUsers: Array<{ id: string; passwordHash: string; emailVerifiedAt?: Date }> }).memoryUsers;
     const record = memory.find((user) => user.id === created.id)!;
+    record.emailVerifiedAt = new Date(); // CU04: correo confirmado para poder entrar.
     record.passwordHash = `scrypt:${salt}:${key.toString("base64url")}`;
     expect(authService.needsRehash(record.passwordHash)).toBe(true);
     await authService.login({ email: created.email, password: "Contraseña-antigua-1" });
@@ -104,7 +105,7 @@ describe("Acceso y bloqueo de cuentas (S03, S07)", () => {
     const staffToken = (await authService.login({ email: staff.email, password: "Llave-de-bodega-22" })).token;
     expect(exp(staffToken) - now).toBeGreaterThan(11 * 3600);
     expect(exp(staffToken) - now).toBeLessThanOrEqual(12 * 3600 + 5); // margen: el segundo puede cambiar entre medir y firmar
-    const customer = await authService.register({ name: "Cliente sesión", email: "cliente-sesion@example.test", password: "Clave-cliente-1" });
+    const customer = await authService.createVerifiedCustomer({ name: "Cliente sesión", email: "cliente-sesion@example.test", password: "Clave-cliente-1" });
     expect(exp(customer.token) - now).toBeGreaterThan(6 * 86400);
   });
 });
@@ -121,9 +122,9 @@ describe("Política de contraseñas (S11)", () => {
   });
 
   it("se aplica al registrarse, al crear personal y al dar acceso al panel a un cliente", async () => {
-    await expect(authService.register({ name: "Débil", email: "debil@example.test", password: "12345678" })).rejects.toThrow(/más usadas/);
+    await expect(authService.createVerifiedCustomer({ name: "Débil", email: "debil@example.test", password: "12345678" })).rejects.toThrow(/más usadas/);
     await expect(authService.saveAccount(admin, undefined, { name: "Corta", email: "corta@example.test", password: "Corta-123", role: "CATALOG", status: "ACTIVE" })).rejects.toThrow(/12 caracteres/);
-    const customer = (await authService.register({ name: "Futuro personal", email: "futuro@example.test", password: "Clave-cliente-9" })).user;
+    const customer = (await authService.createVerifiedCustomer({ name: "Futuro personal", email: "futuro@example.test", password: "Clave-cliente-9" })).user;
     await expect(authService.saveAccount(admin, customer.id, { name: customer.name, email: customer.email, role: "CATALOG", status: "ACTIVE" })).rejects.toThrow(/contraseña nueva/);
     await expect(authService.setUserRole(admin, customer.id, "MANAGER")).rejects.toThrow(/contraseña nueva/);
     const promoted = await authService.saveAccount(admin, customer.id, { name: customer.name, email: customer.email, role: "CATALOG", status: "ACTIVE", password: "Clave-del-panel-77" });

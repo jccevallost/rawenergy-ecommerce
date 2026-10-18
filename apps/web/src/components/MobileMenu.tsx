@@ -1,6 +1,6 @@
 import { useEffect, type MouseEvent } from "react";
 import { useQuery } from "@apollo/client";
-import { ChevronRight, CircleHelp, LayoutGrid, LogOut, MessageCircle, Package, PackageSearch, Tag, Truck, X } from "lucide-react";
+import { ChevronRight, CircleHelp, LayoutGrid, LogOut, MapPin, MessageCircle, Package, PackageSearch, Tag, Truck, UserRound, X } from "lucide-react";
 import { type AuthUser, CHECKOUT_INFO, type CheckoutInfo } from "@vital-forge/shared-logic";
 import { catalogHref } from "../lib/catalogUrl";
 import { freeShippingText } from "../lib/commerceText";
@@ -10,7 +10,13 @@ import { useModalA11y } from "../lib/useModalA11y";
 import { whatsappHref } from "../lib/whatsapp";
 import type { AuthMode } from "./AuthDialog";
 
-type Props = { open: boolean; user: AuthUser | null; onClose: () => void; onLogin: (mode: AuthMode) => void; onOrders: () => void; onLogout: () => void };
+type Props = { open: boolean; user: AuthUser | null; onClose: () => void; onLogin: (mode: AuthMode) => void; onLogout: () => void };
+// CU05: mismos destinos que el menú de cuenta de escritorio.
+const account = [
+  { to: "/cuenta", label: "Mi cuenta", icon: UserRound },
+  { to: "/cuenta/direcciones", label: "Direcciones", icon: MapPin },
+  { to: "/mis-pedidos", label: "Mis pedidos", icon: Package }
+];
 
 const shop = [
   { to: catalogHref(), label: "Todo el catálogo", icon: LayoutGrid },
@@ -29,7 +35,7 @@ const initials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map(part
  * desplazamiento para que nada quede cortado en pantallas bajas. Retiene el foco,
  * se cierra con Escape, con el fondo o al elegir una opción, y vuelve inerte la tienda.
  */
-export function MobileMenu({ open, user, onClose, onLogin, onOrders, onLogout }: Props) {
+export function MobileMenu({ open, user, onClose, onLogin, onLogout }: Props) {
   const { href } = useRoute();
   const { dialogRef, headingRef } = useModalA11y<HTMLDivElement, HTMLHeadingElement>(onClose, open);
   const { data } = useQuery<{ checkoutInfo: CheckoutInfo }>(CHECKOUT_INFO);
@@ -73,16 +79,27 @@ export function MobileMenu({ open, user, onClose, onLogin, onOrders, onLogout }:
                   <span className="mm-avatar" aria-hidden="true">{initials(user.name) || "?"}</span>
                   <span><b>Hola, {user.name.split(" ")[0]}</b><small>{user.email}</small></span>
                 </div>
-                <button type="button" className="mm-link" onClick={act(onOrders)}><Package size={20} aria-hidden="true" /><span>Mis pedidos</span><ChevronRight size={18} aria-hidden="true" /></button>
+                <ul>
+                  {account.map(({ to, label, icon: Icon }) => (
+                    <li key={to}><a className="mm-link" href={to} aria-current={current(to)} onClick={go(to)}><Icon size={20} aria-hidden="true" /><span>{label}</span><ChevronRight size={18} aria-hidden="true" /></a></li>
+                  ))}
+                </ul>
               </>
             ) : (
-              <>
-                <p>Entra para ver tus pedidos y su estado.</p>
-                <div className="mm-auth">
-                  <button type="button" className="btn btn-primary" onClick={act(() => onLogin("login"))}>Entrar</button>
-                  <button type="button" className="btn btn-outline-dark" onClick={act(() => onLogin("register"))}>Crear cuenta</button>
-                </div>
-              </>
+              data?.checkoutInfo.customerAccounts ? (
+                <>
+                  <p>Entra para ver tus pedidos y su estado.</p>
+                  <div className="mm-auth">
+                    <button type="button" className="btn btn-primary" onClick={act(() => onLogin("login"))}>Entrar</button>
+                    <button type="button" className="btn btn-outline-dark" onClick={act(() => onLogin("register"))}>Crear cuenta</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p>Compra sin crear cuenta. Consulta el estado con el número de pedido y tu correo o celular.</p>
+                  <a className="btn btn-primary" href="/pedido" onClick={go("/pedido")}>Consulta tu pedido</a>
+                </>
+              )
             )}
           </section>
 

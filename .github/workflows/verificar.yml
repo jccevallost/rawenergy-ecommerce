@@ -1,6 +1,6 @@
 # Verifica cada cambio: tipos, pruebas y dependencias con avisos de seguridad (C61, S18).
 # No publica nada ni usa secretos. Los despliegues siguen en azure-tienda.yml,
-# azure-panel.yml y Render; este flujo avisa si algo se rompió o si una dependencia
+# azure-panel.yml y la API en Azure App Service; este flujo avisa si algo se rompió o si una dependencia
 # de producción tiene un aviso alto o crítico.
 name: Verificar
 

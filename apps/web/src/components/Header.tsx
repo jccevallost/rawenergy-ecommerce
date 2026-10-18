@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@apollo/client";
-import { LogOut, Menu, ShoppingBag, UserRound } from "lucide-react";
+import { ChevronDown, LogOut, Menu, Package, ShoppingBag, UserRound } from "lucide-react";
 import { type AuthUser, CHECKOUT_INFO, type CheckoutInfo, useCartOrchestrator } from "@vital-forge/shared-logic";
 import { formatMoney } from "@vital-forge/ui-core";
 import { AssetImage } from "./AssetImage";
@@ -28,9 +28,53 @@ const shopLinks = [
   { to: "/#envios", label: "Envíos y pagos" }
 ];
 
-type HeaderProps = { user: AuthUser | null; menuOpen: boolean; onMenu: () => void; onLogin: () => void; onOrders: () => void; onLogout: () => void };
+type HeaderProps = { user: AuthUser | null; menuOpen: boolean; onMenu: () => void; onLogin: () => void; onLogout: () => void };
 
-export function Header({ user, menuOpen, onMenu, onLogin, onOrders, onLogout }: HeaderProps) {
+export const accountLinks = [
+  { to: "/cuenta", label: "Mi cuenta" },
+  { to: "/cuenta/direcciones", label: "Direcciones" },
+  { to: "/mis-pedidos", label: "Mis pedidos" }
+];
+
+/**
+ * CU05: menú de la cuenta como desplegable con enlaces reales (patrón de divulgación, sin role="menu"):
+ * se abre con el botón, se cierra con Escape, al tocar fuera o al navegar, y devuelve el foco al botón.
+ */
+function AccountMenu({ user, onLogout }: { user: AuthUser; onLogout: () => void }) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  const { href } = useRoute();
+  useEffect(() => setOpen(false), [href]);
+  useEffect(() => {
+    if (!open) return;
+    const outside = (event: PointerEvent) => { if (!box.current?.contains(event.target as Node)) setOpen(false); };
+    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") { setOpen(false); button.current?.focus(); } };
+    const leave = (event: FocusEvent) => { if (event.relatedTarget && !box.current?.contains(event.relatedTarget as Node)) setOpen(false); };
+    const current = box.current;
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    current?.addEventListener("focusout", leave);
+    return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); current?.removeEventListener("focusout", leave); };
+  }, [open]);
+  const path = href.split("?")[0];
+  return (
+    <div className="account-menu" ref={box}>
+      {/* En móvil el texto se oculta: el nombre accesible lo repite e incluye lo visible en escritorio. */}
+      <button type="button" ref={button} className="header-action" aria-label={`Hola, ${user.name.split(" ")[0]}. Mi cuenta`} aria-expanded={open} aria-controls="menu-cuenta" onClick={() => setOpen(value => !value)}>
+        <UserRound size={22} aria-hidden="true" />
+        <span className="header-action-text"><small>Hola, {user.name.split(" ")[0]}</small>Mi cuenta</span>
+        <ChevronDown size={16} aria-hidden="true" className="account-menu-chevron" />
+      </button>
+      <ul id="menu-cuenta" className="account-menu-list" hidden={!open}>
+        {accountLinks.map(link => <li key={link.to}><Link to={link.to} aria-current={path === link.to ? "page" : undefined}>{link.label}</Link></li>)}
+        <li><button type="button" onClick={() => { setOpen(false); onLogout(); }}><LogOut size={18} aria-hidden="true" />Cerrar sesión</button></li>
+      </ul>
+    </div>
+  );
+}
+
+export function Header({ user, menuOpen, onMenu, onLogin, onLogout }: HeaderProps) {
   const { route, href } = useRoute();
   const { itemCount, toggleCart } = useCartOrchestrator();
   const { data } = useQuery<{ checkoutInfo: CheckoutInfo }>(CHECKOUT_INFO);
@@ -82,18 +126,17 @@ export function Header({ user, menuOpen, onMenu, onLogin, onOrders, onLogout }: 
         <SearchBox initial={currentQuery} />
         <div className="header-actions">
           {user ? (
-            <>
-              <button type="button" className="header-action" onClick={onOrders} aria-label="Mis pedidos">
-                <UserRound size={22} aria-hidden="true" />
-                <span className="header-action-text"><small>Hola, {user.name.split(" ")[0]}</small>Mis pedidos</span>
-              </button>
-              <button type="button" className="icon-btn icon-btn-dark header-desktop-only" onClick={onLogout} aria-label="Cerrar sesión" title="Cerrar sesión"><LogOut size={20} /></button>
-            </>
-          ) : (
+            <AccountMenu user={user} onLogout={onLogout} />
+          ) : data?.checkoutInfo.customerAccounts ? (
             <button type="button" className="header-action" onClick={onLogin} aria-label="Entrar a mi cuenta">
               <UserRound size={22} aria-hidden="true" />
               <span className="header-action-text"><small>Mi cuenta</small>Entrar</span>
             </button>
+          ) : (
+            <Link to="/pedido" className="header-action" aria-label="Consulta tu pedido">
+              <Package size={22} aria-hidden="true" />
+              <span className="header-action-text"><small>Tu pedido</small>Consultar</span>
+            </Link>
           )}
           <button type="button" className="header-action cart-button" onClick={() => toggleCart(true)} aria-label={`Carrito, ${itemCount} ${itemCount === 1 ? "producto" : "productos"}`}>
             <span className="cart-icon"><ShoppingBag size={22} aria-hidden="true" /><b aria-hidden="true">{itemCount}</b></span>

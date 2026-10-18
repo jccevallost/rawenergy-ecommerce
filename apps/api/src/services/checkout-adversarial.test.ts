@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import { demoProducts } from "../data/demoProducts.js";
-import { checkoutInputSchema } from "../validation/order.js";
+import { ApolloServer } from "@apollo/server";
+import { resolvers } from "../graphql/resolvers.js";
+import { typeDefs } from "../graphql/typeDefs.js";
+import { checkoutInputSchema, MAX_CHECKOUT_LINES } from "../validation/order.js";
+import { authService, type AuthUser } from "./auth.service.js";
 import { productService } from "./product.service.js";
 import { orderService } from "./order.service.js";
 import { mailService } from "./mail.service.js";
@@ -60,5 +64,38 @@ describe("Checkout adversarial en memoria", () => {
     const f = await fixture(); const order = await orderService.create(f.input);
     await Promise.all([orderService.updateStatus(String(order.id), "CANCELLED"), orderService.updateStatus(String(order.id), "CANCELLED")]);
     expect(await f.stock()).toBe(2);
+  });
+});
+
+describe("Contrato del pedido por GraphQL (D12)", () => {
+  const server = new ApolloServer({ typeDefs, resolvers });
+  const run = async (query: string, variables: Record<string, unknown>, user: AuthUser | null, ip: string) => {
+    const response = await server.executeOperation({ query, variables }, { contextValue: { user, requestId: randomUUID(), ip } });
+    if (response.body.kind !== "single") throw new Error("Expected single result");
+    return response.body.singleResult;
+  };
+  const ORDER = "mutation($i:CheckoutInput!){ createCheckoutOrder(input:$i){ orderNumber total } }";
+
+  it("clientes e invitados confirman el total; sin él no se reserva ni se crea el pedido", async () => {
+    const f = await fixture();
+    const { expectedTotal: _omitted, ...withoutTotal } = f.input;
+    const anonymous = await run(ORDER, { i: withoutTotal }, null, "203.0.113.120");
+    expect(anonymous.errors?.[0]).toMatchObject({ message: expect.stringMatching(/Actualiza el total/), extensions: { code: "BAD_USER_INPUT" } });
+    const account = await authService.createVerifiedCustomer({ name: "Cliente D12", email: "cliente-d12@example.test", password: "Pedido-seguro-4719" });
+    const customerUser = (await authService.me(account.token))!;
+    expect((await run(ORDER, { i: { ...withoutTotal, idempotencyKey: randomUUID() } }, customerUser, "203.0.113.121")).errors?.[0]?.extensions?.code).toBe("BAD_USER_INPUT");
+    expect(await f.stock()).toBe(2);
+    const created = await run(ORDER, { i: f.input }, null, "203.0.113.122");
+    expect(created.errors).toBeUndefined();
+    expect((created.data!.createCheckoutOrder as { total: number }).total).toBe(29);
+    expect(await f.stock()).toBe(1);
+  });
+
+  it("el total del carrito y el pedido aceptan el mismo número de líneas", async () => {
+    const lines = (count: number) => Array.from({ length: count }, (_, i) => ({ productId: "demo-2", variantSku: `SKU-${i}`, quantity: 1 }));
+    expect(MAX_CHECKOUT_LINES).toBe(60);
+    const TOTALS = "query($items:[CartItemInput!]!){ calculateCartTotals(cartItems:$items){ total } }";
+    expect((await run(TOTALS, { items: lines(61) }, null, "203.0.113.123")).errors?.[0]?.extensions?.code).toBe("BAD_USER_INPUT");
+    expect(checkoutInputSchema.safeParse({ ...(await fixture()).input, items: lines(61) }).success).toBe(false);
   });
 });

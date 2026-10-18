@@ -1,4 +1,9 @@
 import { nextStatuses, orderStatusSchema, type OrderStatus } from "../validation/order.js";
+import { purchaseResultsService } from "../services/purchaseResults.service.js";
+import { exchangeService } from "../services/exchange.service.js";
+import { inventoryAgingService } from "../services/inventoryAging.service.js";
+import { purchaseImportService } from "../services/purchaseImport.service.js";
+import { permissions } from "../services/permissions.js";
 import { unitOfWork } from "../lib/unitOfWork.js";
 import { supplyService } from "../services/supply.service.js";
 import { homeService } from "../services/home.service.js";
@@ -6,8 +11,14 @@ import { productPayloadSchema } from "../validation/product.js";
 import { GraphQLError } from "graphql";
 import { ZodError, z } from "zod";
 import { env } from "../config/env.js";
-import { authService, type AuthRole, type AuthUser } from "../services/auth.service.js";
+import { authService, customerAccountsEnabled, accountsOffMessage, mfaSetupPending, staffMfaRequired, type AuthRole, type AuthUser } from "../services/auth.service.js";
 import { mailService } from "../services/mail.service.js";
+import { customerProfileService } from "../services/customerProfile.service.js";
+import { customerOrderView, orderInvoice, orderRecipient } from "../services/customerOrders.js";
+import { blockedIdentities, blockedMessage } from "../services/blockedIdentities.js";
+import { cancellationRequestService } from "../services/cancellationRequest.service.js";
+import { cancellationStore } from "../services/cancellationRequests.store.js";
+import { personKeys } from "../services/welcomeDiscount.service.js";
 import { telegramService } from "../services/telegram.service.js";
 import { orderService } from "../services/order.service.js";
 import { productService } from "../services/product.service.js";
@@ -20,7 +31,7 @@ import { clientKey, operationLimiter } from "../lib/operationLimiter.js";
 import { trustedLogins } from "../lib/trustedLogins.js";
 import { turnstileEnabled, verifyHuman } from "../lib/turnstile.js";
 import { securityAlerts } from "../services/securityAlerts.service.js";
-import { MAX_UNITS_PER_LINE } from "../validation/order.js";
+import { MAX_CHECKOUT_LINES, MAX_UNITS_PER_LINE } from "../validation/order.js";
 import { expenseService } from "../services/expense.service.js";
 import { commercialService } from "../services/commercial.service.js";
 import { campaignService, campaignStatus, ecuadorToday, type Campaign } from "../services/campaign.service.js";
@@ -48,7 +59,7 @@ const searchArgs = z.object({
   pagination: z.object({ first: z.number().int().min(1).max(100).optional(), after: z.string().max(300).optional() }).optional()
 });
 const cartArgs = z.object({
-  cartItems: z.array(z.object({ productId: z.string(), variantSku: z.string().min(3), quantity: z.number().int().min(1).max(MAX_UNITS_PER_LINE) })).max(100),
+  cartItems: z.array(z.object({ productId: z.string(), variantSku: z.string().min(3), quantity: z.number().int().min(1).max(MAX_UNITS_PER_LINE) })).max(MAX_CHECKOUT_LINES),
   shippingMethod: z.enum(["EXPRESS_QUITO_VALLES", "SERVIENTREGA_NATIONAL"]).optional(),
   discountCode: z.string().trim().max(30).nullish()
 });
@@ -58,7 +69,7 @@ const orderStatusArgs = z.object({
   id: z.string().min(1).max(80),
   status: orderStatusSchema
 });
-const userArgs = z.object({ role: z.enum(["CUSTOMER", "CATALOG", "WAREHOUSE", "MANAGER", "ADMIN"]).optional() });
+const userArgs = z.object({ role: z.enum(["CUSTOMER", "CATALOG", "WAREHOUSE", "MANAGER", "STORE_MANAGER", "ADMIN"]).optional() });
 const orderListArgs = z.object({
   filters: z.object({
     status: orderStatusSchema.optional(),
@@ -78,7 +89,7 @@ const taxonomyArgs = z.object({
   path: ["target"]
 });
 const userStatusArgs = z.object({ id: z.string().min(1).max(80), status: z.enum(["ACTIVE", "BLOCKED"]) });
-const userRoleArgs = z.object({ id: z.string().min(1).max(80), role: z.enum(["CUSTOMER", "CATALOG", "WAREHOUSE", "MANAGER", "ADMIN"]) });
+const userRoleArgs = z.object({ id: z.string().min(1).max(80), role: z.enum(["CUSTOMER", "CATALOG", "WAREHOUSE", "MANAGER", "STORE_MANAGER", "ADMIN"]) });
 type ResolverContext = AuditContext & { user?: AuthUser | null };
 
 const safe = async <T>(action: () => Promise<T>) => {
@@ -93,11 +104,11 @@ const productId = (product: { id?: unknown; _id?: unknown }) => String(product.i
 const orderId = (order: { id?: unknown; _id?: unknown }) => String(order.id ?? order._id);
 const dateString = (value?: Date | string | null) => value ? new Date(value).toISOString() : null;
 const PUBLIC_STOCK_CAP = MAX_UNITS_PER_LINE;
-const isStaff = (context: ResolverContext) => Boolean(context.user && context.user.role !== "CUSTOMER");
+const isStaff = (context: ResolverContext) => Boolean(context.user && context.user.role !== "CUSTOMER" && !mfaSetupPending(context.user));
 
 const baseResolvers = {
   JSON: jsonScalar,
-  User: { createdAt: (user: AuthUser) => dateString(user.createdAt), lastLoginAt: (user: AuthUser) => dateString(user.lastLoginAt), twoFactorEnabled: (user: AuthUser) => Boolean(user.twoFactorEnabled) },
+  User: { createdAt: (user: AuthUser) => dateString(user.createdAt), lastLoginAt: (user: AuthUser) => dateString(user.lastLoginAt), twoFactorEnabled: (user: AuthUser) => Boolean(user.twoFactorEnabled), twoFactorRequired: (user: AuthUser) => user.role !== "CUSTOMER" && staffMfaRequired(), emailVerified: (user: AuthUser) => user.role !== "CUSTOMER" || Boolean(user.emailVerified) },
   Campaign: {
     imageUrl: (campaign: Campaign) => publicMediaUrl(campaign.imageUrl || null),
     products: (campaign: Campaign, args: { limit?: number }) => safe(() => campaignService.products(campaign, z.number().int().min(1).max(24).parse(args.limit ?? 8)))
@@ -127,11 +138,19 @@ const baseResolvers = {
   },
   ProductImage: { url: (image: { url: string }) => publicMediaUrl(image.url) },
   OrderItem: { image: (item: { image?: string | null }) => publicMediaUrl(item.image ?? null) },
+  CustomerProfile: {
+    // CUENTA-BIENVENIDA-01: misma regla que aplica el descuento al confirmar; solo se calcula si se pide.
+    firstPurchase: async (profile: { email: string; phone: string; billing?: { idNumber?: string } | null }, _: unknown, context: ResolverContext) =>
+      !context.user || !(await orderService.isReturningCustomer(context.user.id, { email: profile.email, phone: profile.phone, idNumber: profile.billing?.idNumber }))
+  },
   Order: {
     paidAt: (order: {paidAt?: Date | null}) => dateString(order.paidAt),
     allowedNextStatuses: (order: { status: OrderStatus; paymentMethod?: string; confirmedAt?: Date | null }) => nextStatuses(order.status, order.paymentMethod, order.confirmedAt),
     confirmedAt: (order: { confirmedAt?: Date | null }) => dateString(order.confirmedAt),
-    operations: (order: { history?: unknown; returnInfo?: unknown; refund?: unknown }, _: unknown, context: ResolverContext) => { authService.requirePermission(context.user, "orders.read"); return { history: order.history ?? [], returnInfo: order.returnInfo ?? null, refund: order.refund ?? null }; },
+    // CU07: adaptador para pedidos anteriores, que solo tienen `customer`.
+    recipient: orderRecipient,
+    invoice: orderInvoice,
+    operations: (order: { history?: unknown; returnInfo?: unknown; refund?: unknown; returns?: unknown[] }, _: unknown, context: ResolverContext) => { authService.requirePermission(context.user, "orders.read"); return { history: order.history ?? [], returnInfo: order.returnInfo ?? null, refund: order.refund ?? null, returns: (order.returns ?? []).map(r => { const x = r as { at: Date; reason: string; restocked: boolean; items: Array<{ variantSku: string; title: string; quantity: number; value: number }> }; return { at: x.at, reason: x.reason, restocked: x.restocked, items: x.items.map(i => ({ variantSku: i.variantSku, title: i.title, quantity: i.quantity, value: i.value })) }; }) }; },
     id: orderId,
     createdAt: (order: { createdAt?: Date | string | null }) => dateString(order.createdAt),
     updatedAt: (order: { updatedAt?: Date | string | null }) => dateString(order.updatedAt)
@@ -142,6 +161,11 @@ const baseResolvers = {
     staffHome: (_: unknown, __: unknown, context: ResolverContext) => safe(async () => { const actor = authService.requireStaff(context.user); return homeService.overview(actor.role); }),
     order: (_: unknown, args: {id:string}, context: ResolverContext) => safe(async()=>{authService.requirePermission(context.user,"orders.read");return orderService.get(idArgs.parse(args).id);}),
     mySessions: (_: unknown, __: unknown, context: ResolverContext) => safe(async () => authService.sessions(authService.requireUser(context.user))),
+    purchaseImports: (_: unknown, args: { limit?: number }, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "purchases.read"); return purchaseImportService.list(z.number().int().min(1).max(50).parse(args.limit ?? 20)); }),
+    purchaseImport: (_: unknown, args: { id: string }, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "purchases.read"); const row = await purchaseImportService.get(idArgs.parse(args).id); return row ? purchaseImportService.refresh(row) : null; }),
+    purchaseResults: (_: unknown, __: unknown, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "management.read"); return purchaseResultsService.overview(); }),
+    supplierExchanges: (_: unknown, args: { status?: string | null }, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "purchases.read"); const status = z.enum(["ABIERTO", "REPUESTO", "CERRADO", "CERRADO_CON_DIFERENCIA", "ANULADO"]).optional().parse(args.status ?? undefined); return { exchanges: await exchangeService.list(status), pending: await exchangeService.pendingBalance() }; }),
+    inventoryAging: (_: unknown, __: unknown, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "inventory.read"); return inventoryAgingService.overview(); }),
     supplyOverview: (_: unknown, __: unknown, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "purchases.read"); return supplyService.overview(); }),
     stockMovements: (_: unknown, args: { filters?: unknown }, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "inventory.read"); const filters = z.object({ productId: z.string().optional(), sku: z.string().optional(), search: z.string().max(120).optional(), offset: z.number().int().nonnegative().optional(), limit: z.number().int().min(1).max(100).optional() }).parse(args.filters ?? {}); return supplyService.listMovements(filters); }),
     inventoryOverview: (_: unknown, args: { filters: unknown }, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "inventory.read"); return managementService.inventory(args.filters); }),
@@ -185,6 +209,8 @@ const baseResolvers = {
         ? args.contact.toLowerCase() === order.customer.email.toLowerCase()
         : phone(args.contact).length >= 7 && phone(args.contact) === phone(order.customer.phone);
       if (!matches) return null;
+      // CU11: con número y contacto correctos, una identidad bloqueada recibe el mensaje neutral, no el pedido.
+      if (await blockedIdentities.any(personKeys(order.customer as { idNumber: string; phone: string; email: string }))) throw new GraphQLError(blockedMessage, { extensions: { code: "ACCOUNT_BLOCKED" } });
       const created = new Date(order.createdAt);
       return {
         orderNumber: order.orderNumber, status: order.status, paymentMethod: order.paymentMethod ?? "BANK_TRANSFER", createdAt: created.toISOString(),
@@ -217,6 +243,22 @@ const baseResolvers = {
       const args = orderListArgs.parse(rawArgs);
       return orderService.list(args.filters, { limit: args.limit, offset: args.offset });
     }),
+    myProfile: (_: unknown, __: unknown, context: ResolverContext) => safe(() => customerProfileService.get(context.user)),
+    myOrdersPage: (_: unknown, args: unknown, context: ResolverContext) => safe(async () => {
+      const user = authService.requireCustomer(context.user);
+      const page = await orderService.pageByUser(user.id, args);
+      const cancellations = await authService.customerCancellations(user.id);
+      const requests = await cancellationStore.latestFor(page.orders.map(order => String(order._id ?? order.id)));
+      return { ...page, orders: page.orders.map(order => customerOrderView(order as Parameters<typeof customerOrderView>[0], cancellations, requests.get(String(order._id ?? order.id)))) };
+    }),
+    myOrder: (_: unknown, args: { number: string }, context: ResolverContext) => safe(async () => {
+      const user = authService.requireCustomer(context.user);
+      const order = await orderService.findOwned(user.id, args.number);
+      if (!order) return null;
+      const id = String((order as { _id?: unknown; id?: unknown })._id ?? (order as { id?: unknown }).id);
+      return customerOrderView(order as Parameters<typeof customerOrderView>[0], await authService.customerCancellations(user.id), (await cancellationStore.latestFor([id])).get(id));
+    }),
+    cancellationRequests: (_: unknown, args: { status?: string }, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "orders.write"); return cancellationRequestService.list(args.status); }),
     myOrders: (_: unknown, rawArgs: unknown, context: ResolverContext) => safe(() => {
       const user = authService.requireUser(context.user);
       const args = myOrdersArgs.parse(rawArgs);
@@ -240,6 +282,7 @@ const baseResolvers = {
         bank: settings.showBankDetails && bank.name && bank.accountNumber && bank.holder ? { name: bank.name, accountType: bank.accountType, accountNumber: bank.accountNumber, holder: bank.holder } : null,
         notifiesByEmail: mailService.enabled, whatsapp: env.STORE_WHATSAPP ?? null,
         captchaSiteKey: turnstileEnabled() ? env.TURNSTILE_SITE_KEY : null,
+        customerAccounts: customerAccountsEnabled(),
         freeShippingThreshold: settings.freeShippingThreshold, freeShippingMethods: settings.freeShippingMethods, reservationHours: env.ORDER_RESERVATION_HOURS,
         shippingRates: Object.entries(settings.shippingFees).map(([method, fee]) => ({ method, fee })),
         cashOnDelivery: settings.cashOnDelivery,
@@ -261,6 +304,7 @@ const baseResolvers = {
       return { ok: !domain, message: domain, suggestion };
     }),
     notificationOutbox: (_: unknown, __: unknown, context: ResolverContext) => safe(async () => { authService.requireAdmin(context.user); return notificationOutbox.summary(); }),
+    simulatedMailbox: (_: unknown, args: { to?: string | null }, context: ResolverContext) => safe(async () => { authService.requireAdmin(context.user); return mailService.simulatedMailbox(z.string().max(120).optional().parse(args.to ?? undefined)); }),
     taxonomy: (_: unknown, __: unknown, context: ResolverContext) => safe(() => {
       authService.requirePermission(context.user, "catalog.read");
       return productService.taxonomy();
@@ -286,12 +330,13 @@ const baseResolvers = {
     })
   },
   Mutation: {
-    saveExpense: (_: unknown, args: { id: string; input: unknown; revision?: number | null }, context: ResolverContext) => safe(async () => { const actor = authService.requireAdmin(context.user); return expenseService.save(args.id, args.input, args.revision ?? undefined, actor); }),
+    saveExpense: (_: unknown, args: { id: string; input: unknown; revision?: number | null }, context: ResolverContext) => safe(async () => { const actor = authService.requirePermission(context.user, "expenses.write"); return expenseService.save(args.id, args.input, args.revision ?? undefined, actor); }),
     voidExpense: (_: unknown, args: { id: string; revision: number; reason: string }, context: ResolverContext) => safe(async () => { const actor = authService.requireAdmin(context.user); return expenseService.void(args.id, args.revision, args.reason, actor); }),
     saveSupplier: (_: unknown, args: { id?: string; input: unknown }, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "purchases.write"); return supplyService.saveSupplier(args.id, args.input); }),
     saveWarehouse: (_: unknown, args: { id?: string; input: unknown }, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "inventory.write"); return supplyService.saveWarehouse(args.id, args.input); }),
-    savePurchase: (_: unknown, args: { id?: string; input: unknown; revision?: number }, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "purchases.write"); return supplyService.savePurchase(args.id, args.input, args.revision); }),
-    changePurchase: (_: unknown, args: { id: string; status: string; revision: number }, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "purchases.write"); return supplyService.changePurchase(args.id, z.enum(["ORDERED", "RECEIVED", "CANCELLED"]).parse(args.status), z.number().int().nonnegative().parse(args.revision)); }),
+    savePurchase: (_: unknown, args: { id?: string; input: unknown; revision?: number; idempotencyKey?: string | null }, context: ResolverContext) => safe(async () => { const actor = authService.requirePermission(context.user, "purchases.write"); return supplyService.savePurchase(args.id, args.input, args.revision, { key: args.idempotencyKey ?? undefined, actorId: actor.id }); }),
+    receivePurchase: (_: unknown, args: { id: string; revision: number; input: unknown }, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "purchases.write"); return supplyService.receive(idArgs.parse({ id: args.id }).id, z.number().int().nonnegative().parse(args.revision), args.input as never); }),
+    changePurchase: (_: unknown, args: { id: string; status: string; revision: number; receivedOn?: string | null }, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "purchases.write"); return supplyService.changePurchase(args.id, z.enum(["ORDERED", "RECEIVED", "CANCELLED"]).parse(args.status), z.number().int().nonnegative().parse(args.revision), z.string().max(10).optional().parse(args.receivedOn ?? undefined)); }),
     transferStock: (_: unknown, args: { input: unknown }, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "inventory.write"); return supplyService.transfer(args.input); }),
     logout: (_: unknown, __: unknown, context: ResolverContext) => safe(async () => authService.endSession(authService.requireUser(context.user))),
     revokeSessions: (_: unknown, __: unknown, context: ResolverContext) => safe(async () => authService.revokeSessions(authService.requireUser(context.user))),
@@ -308,6 +353,12 @@ const baseResolvers = {
       for (const payload of payloads) await saveProductSafely(undefined, payload, undefined, context.user);
       return { valid: true, issues: [], count: rows.length, created: payloads.length };
     }),
+    generateExchange: (_: unknown, args: { input: unknown; idempotencyKey: string }, context: ResolverContext) => safe(async () => { const actor = authService.requirePermission(context.user, "purchases.write"); return exchangeService.generate(args.input, args.idempotencyKey, { id: actor.id, name: actor.name }); }),
+    linkExchangeReplacement: (_: unknown, args: { id: string; revision: number; purchaseId: string }, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "purchases.write"); return exchangeService.linkReplacement(idArgs.parse({ id: args.id }).id, z.number().int().nonnegative().parse(args.revision), idArgs.parse({ id: args.purchaseId }).id); }),
+    closeExchange: (_: unknown, args: { id: string; revision: number; note: string }, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "purchases.write"); return exchangeService.close(idArgs.parse({ id: args.id }).id, z.number().int().nonnegative().parse(args.revision), args.note); }),
+    voidExchange: (_: unknown, args: { id: string; revision: number; reason: string }, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "purchases.write"); return exchangeService.void(idArgs.parse({ id: args.id }).id, z.number().int().nonnegative().parse(args.revision), args.reason); }),
+    approvePurchaseImport: (_: unknown, args: { id: string; revision: number; input: unknown }, context: ResolverContext) => safe(async () => { const actor = authService.requirePermission(context.user, "purchases.write"); return purchaseImportService.approve(idArgs.parse({ id: args.id }).id, z.number().int().nonnegative().parse(args.revision), args.input, { id: actor.id, name: actor.name }); }),
+    discardPurchaseImport: (_: unknown, args: { id: string; revision: number; reason: string }, context: ResolverContext) => safe(async () => { const actor = authService.requirePermission(context.user, "purchases.write"); return purchaseImportService.discard(idArgs.parse({ id: args.id }).id, z.number().int().nonnegative().parse(args.revision), args.reason, { id: actor.id, name: actor.name }); }),
     adjustStock: (_: unknown, args: { input: unknown }, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "inventory.write"); return productService.adjustStock(args.input); }),
     saveAccount: (_: unknown, args: { id?: string; input: unknown }, context: ResolverContext) => safe(async () => {
       const actor = authService.requireAdmin(context.user);
@@ -327,9 +378,36 @@ const baseResolvers = {
     }),
     // C44: el cliente enlaza pedidos que hizo sin sesión. El servicio exige número
     // y correo de la cuenta; el límite es el mismo que el de la consulta de pedidos.
+    updateMyContact: (_: unknown, args: { input: unknown; revision: number }, context: ResolverContext) => safe(() => customerProfileService.updateContact(context.user, args.input, args.revision)),
+    updateMyBilling: (_: unknown, args: { input?: unknown; revision: number }, context: ResolverContext) => safe(() => customerProfileService.updateBilling(context.user, args.input ?? null, args.revision)),
+    addMyAddress: (_: unknown, args: { input: unknown; revision: number; makeDefault?: boolean | null }, context: ResolverContext) => safe(() => customerProfileService.addAddress(context.user, args.input, args.revision, Boolean(args.makeDefault))),
+    updateMyAddress: (_: unknown, args: { id: string; input: unknown; revision: number }, context: ResolverContext) => safe(() => customerProfileService.updateAddress(context.user, args.id, args.input, args.revision)),
+    // `nextDefaultId` ausente y `null` significan cosas distintas (plan §5.1): se respeta la diferencia.
+    removeMyAddress: (_: unknown, args: { id: string; revision: number; nextDefaultId?: string | null }, context: ResolverContext) => safe(() => customerProfileService.removeAddress(context.user, args.id, args.revision, "nextDefaultId" in args ? args.nextDefaultId : undefined)),
+    setMyDefaultAddress: (_: unknown, args: { id: string; revision: number }, context: ResolverContext) => safe(() => customerProfileService.setDefaultAddress(context.user, args.id, args.revision)),
+    cancelMyOrder: (_: unknown, args: { number: string }, context: ResolverContext) => safe(async () => {
+      const user = authService.requireCustomer(context.user);
+      operationLimiter.consume("orderCancel", user.id);
+      const result = await orderService.cancelByCustomer(user, args.number);
+      return { ...result, order: customerOrderView(result.order as Parameters<typeof customerOrderView>[0], result.accountBlocked ? 0 : await authService.customerCancellations(user.id)) };
+    }),
+    requestOrderCancellation: (_: unknown, args: { number: string; reason: string; note?: string | null }, context: ResolverContext) => safe(async () => {
+      const user = authService.requireCustomer(context.user);
+      operationLimiter.consume("orderCancel", user.id);
+      const request = await cancellationRequestService.request(user, args.number, { reason: args.reason, note: args.note ?? "" });
+      const order = await orderService.findOwned(user.id, args.number);
+      return customerOrderView(order as Parameters<typeof customerOrderView>[0], await authService.customerCancellations(user.id), request);
+    }),
+    resolveCancellationRequest: (_: unknown, args: { id: string; revision: number; approve: boolean; publicNote: string; internalNote?: string | null }, context: ResolverContext) => safe(async () => {
+      const actor = authService.requirePermission(context.user, "orders.write");
+      const decided = await cancellationRequestService.resolve(actor, args.id, { revision: args.revision, approve: args.approve, publicNote: args.publicNote, internalNote: args.internalNote ?? "" });
+      return (await cancellationRequestService.list("ALL")).find(request => request.id === decided.id)!;
+    }),
     linkGuestOrders: (_: unknown, args: { orderNumbers: unknown }, context: ResolverContext) => safe(async () => {
       const user = authService.requireUser(context.user);
       if (user.role !== "CUSTOMER") throw new GraphQLError("Solo las cuentas de cliente agregan pedidos.", { extensions: { code: "FORBIDDEN" } });
+      // D10/CU04: coincidir en el correo solo acredita propiedad si ese correo está confirmado.
+      if (!user.emailVerified) throw new GraphQLError("Confirma tu correo para agregar a tu cuenta los pedidos que hiciste sin ella.", { extensions: { code: "FORBIDDEN" } });
       operationLimiter.consume("orderLookup", clientKey(context.ip));
       const orderNumbers = await orderService.linkGuestOrders(user, args.orderNumbers);
       return { linked: orderNumbers.length, orderNumbers };
@@ -337,11 +415,15 @@ const baseResolvers = {
     startTwoFactorSetup: (_: unknown, __: unknown, context: ResolverContext) => safe(async () => authService.startTwoFactor(context.user)),
     confirmTwoFactorSetup: (_: unknown, args: { code: string }, context: ResolverContext) => safe(async () => {
       operationLimiter.consume("twoFactor", authService.requireUser(context.user).id);
-      return authService.confirmTwoFactor(context.user, z.string().trim().max(20).parse(args.code));
+      const result = await authService.confirmTwoFactor(context.user, z.string().trim().max(20).parse(args.code));
+      securityAlerts.twoFactorChanged(context.user!, true);
+      return result;
     }),
     disableTwoFactor: (_: unknown, args: { code: string }, context: ResolverContext) => safe(async () => {
       operationLimiter.consume("twoFactor", authService.requireUser(context.user).id);
-      return authService.disableTwoFactor(context.user, z.string().trim().max(20).parse(args.code));
+      const result = await authService.disableTwoFactor(context.user, z.string().trim().max(20).parse(args.code));
+      if (context.user!.twoFactorEnabled) securityAlerts.twoFactorChanged(context.user!, false);
+      return result;
     }),
     resetTwoFactor: (_: unknown, args: { id: string }, context: ResolverContext) => safe(async () => {
       const target = await authService.findUser(idArgs.parse(args).id);
@@ -351,10 +433,18 @@ const baseResolvers = {
     }),
     register: (_: unknown, args: { input: unknown }, context: ResolverContext) => safe(async () => {
       operationLimiter.consume("register", clientKey(context.ip));
+      if (!customerAccountsEnabled()) throw new GraphQLError(accountsOffMessage, { extensions: { code: "FORBIDDEN" } });
       const { captchaToken, ...input } = (args.input ?? {}) as { captchaToken?: string | null };
       await verifyHuman(captchaToken, context.ip);
       return authService.register(input);
     }),
+    verifyEmail: (_: unknown, args: { token: string }, context: ResolverContext) => safe(async () => { operationLimiter.consume("emailVerification", clientKey(context.ip)); return authService.verifyEmail(args.token); }),
+    resendVerification: (_: unknown, args: { email: string }, context: ResolverContext) => safe(async () => { operationLimiter.consume("emailVerification", clientKey(context.ip)); return authService.resendVerification(args.email); }),
+    requestEmailChange: (_: unknown, args: { email: string; password: string }, context: ResolverContext) => safe(async () => {
+      operationLimiter.consume("emailChange", authService.requireCustomer(context.user).id);
+      return authService.requestEmailChange(context.user, args.email, args.password);
+    }),
+    confirmEmailChange: (_: unknown, args: { token: string }, context: ResolverContext) => safe(async () => { operationLimiter.consume("emailVerification", clientKey(context.ip)); return authService.confirmEmailChange(args.token); }),
     login: (_: unknown, args: { input: unknown }, context: ResolverContext) => safe(async () => {
       const connection = clientKey(context.ip);
       operationLimiter.consume("login", connection);
@@ -385,7 +475,10 @@ const baseResolvers = {
       operationLimiter.consume("checkout", clientKey(context.ip));
       // El token no forma parte de la solicitud (no cambia su huella) y solo se verifica para un pedido
       // nuevo: un reintento de la misma solicitud devuelve el pedido ya registrado (C70).
-      const { captchaToken, ...input } = (args.input ?? {}) as { captchaToken?: string | null };
+      const { captchaToken, ...input } = (args.input ?? {}) as { captchaToken?: string | null; expectedTotal?: number | null };
+      // D12: clientes e invitados confirman el total que vieron; si cambió, el servicio rechaza el
+      // pedido sin reservar. El panel no muestra un total antes de crear el pedido.
+      if (!isStaff(context) && typeof input.expectedTotal !== "number") throw new GraphQLError("Actualiza el total del carrito antes de confirmar el pedido.", { extensions: { code: "BAD_USER_INPUT" } });
       return orderService.create(input, context.user, { beforeNew: () => verifyHuman(captchaToken, context.ip) });
     }),
     recordOrderReturn: (_: unknown, args: {id: string; input: unknown}, context: ResolverContext) => safe(async () => { authService.requirePermission(context.user, "orders.write"); return orderService.recordReturn(args.id, args.input); }),
@@ -491,9 +584,10 @@ function parseExpectedStocks(id: string | undefined, value: unknown) {
   if (!id) return undefined;
   return z.array(z.object({ sku: z.string(), stock: z.number().int().nonnegative() })).max(120).parse(value);
 }
+const customerProfileMutations = new Set(["updateMyContact", "updateMyBilling", "addMyAddress", "updateMyAddress", "removeMyAddress", "setMyDefaultAddress"]);
 // Every mutation goes through the same journal, including authentication and failed authorization.
 const auditedMutations = Object.fromEntries(Object.entries(baseResolvers.Mutation).map(([action, resolver]) => [action, async (parent: unknown, args: Record<string, unknown>, context: ResolverContext) => {
-  const entity = /Commerce/.test(action) ? "settings" : /Campaign/.test(action) ? "campaigns" : /Expense/.test(action) ? "expenses" : /Supplier/.test(action) ? "suppliers" : /Warehouse/.test(action) ? "warehouses" : /Purchase/.test(action) ? "purchases" : /Product|Taxonomy|Stock/.test(action) ? "products" : /Order/.test(action) ? "orders" : /Media/.test(action) ? "media" : "users";
+  const entity = /Commerce/.test(action) ? "settings" : /Campaign/.test(action) ? "campaigns" : /Expense/.test(action) ? "expenses" : /Supplier/.test(action) ? "suppliers" : /Warehouse/.test(action) ? "warehouses" : /Exchange/.test(action) ? "exchanges" : /Purchase/.test(action) ? "purchases" : /Product|Taxonomy|Stock/.test(action) ? "products" : /Order/.test(action) ? "orders" : /Media/.test(action) ? "media" : "users";
   const id = String(args.id ?? (args.input as { productId?: string } | undefined)?.productId ?? "");
   const requestedSlugs = new Set(Array.isArray(args.payloads) ? args.payloads.flatMap(row => row && typeof row.slug === "string" ? [row.slug as string] : []) : []);
   let affectedIds: string[] = [];
@@ -504,7 +598,7 @@ const auditedMutations = Object.fromEntries(Object.entries(baseResolvers.Mutatio
     // arbitrary order supplied by an unauthenticated caller.
     if (action === "createCheckoutOrder" && result !== undefined && recordId) return redact(await orderService.get(recordId));
     if (!context.user || context.user.role === "CUSTOMER") return null;
-    if (entity === "expenses") return context.user.role === "ADMIN" && recordId ? expenseService.get(recordId) : null;
+    if (entity === "expenses") return permissions[context.user.role].includes("expenses.write") && recordId ? expenseService.get(recordId) : null;
     if (entity === "campaigns") return recordId ? campaignService.get(recordId) : null;
     if (entity === "settings") return commerceSettingsService.get();
     if (entity === "products") {
@@ -522,17 +616,20 @@ const auditedMutations = Object.fromEntries(Object.entries(baseResolvers.Mutatio
     }
     if (entity === "orders") return recordId ? redact(await orderService.get(recordId)) : null;
     if (entity === "purchases") return (await supplyService.purchases()).find(p => p.id === recordId) ?? null;
+    if (entity === "exchanges") return recordId ? exchangeService.get(recordId) : null;
     if (entity === "suppliers") return (await supplyService.suppliers()).find(p => p.id === recordId) ?? null;
     if (entity === "warehouses") return (await supplyService.warehouses()).find(p => p.id === recordId) ?? null;
     if (entity === "users" && context.user.role === "ADMIN" && recordId) return redact(await authService.findUser(recordId));
     return null;
   };
   const work = () => (resolver as (p: unknown, a: unknown, c: ResolverContext) => Promise<unknown>)(parent, args, context);
-  const transactional = /Commerce|Campaign|Expense|Product|Taxonomy|Stock|Order|Purchase|Supplier|Warehouse/.test(action);
+  const transactional = /Commerce|Campaign|Expense|Product|Taxonomy|Stock|Order|Purchase|Supplier|Warehouse|Exchange/.test(action);
   const hasSnapshot = transactional || entity === "users" && Boolean(id);
-  return auditService.run(context, action, entity, id, args, null, work, {transactional, ...(hasSnapshot ? {snapshot} : {})});
+  // CU03: del perfil del cliente solo se anota qué se cambió, no direcciones, teléfonos ni documento.
+  const auditInput = customerProfileMutations.has(action) ? { fields: Object.keys((args.input ?? {}) as object), revision: args.revision, makeDefault: args.makeDefault, nextDefault: "nextDefaultId" in args ? (args.nextDefaultId === null ? "none" : "set") : undefined } : args;
+  return auditService.run(context, action, customerProfileMutations.has(action) ? "customerProfile" : entity, id, auditInput, null, work, {transactional, ...(hasSnapshot ? {snapshot} : {})});
 }]));
-const sensitiveQueries = new Set(["commercialOverview", "expenses", "staffHome", "accounts", "users", "orders", "order", "databaseRecords", "auditEvents", "storeSettings", "managementDashboard", "inventoryOverview", "supplyOverview", "stockMovements", "mySessions", "adminStats"]);
+const sensitiveQueries = new Set(["cancellationRequests", "commercialOverview", "expenses", "staffHome", "accounts", "users", "orders", "order", "databaseRecords", "auditEvents", "storeSettings", "managementDashboard", "inventoryOverview", "supplyOverview", "stockMovements", "mySessions", "adminStats"]);
 const auditedQueries = Object.fromEntries(Object.entries(baseResolvers.Query).map(([action, resolver]) => [action, sensitiveQueries.has(action) ? async (parent: unknown, args: Record<string, unknown>, context: ResolverContext) => {
   let output: unknown;
   await auditService.run(context, `read:${action}`, "access", "", args, null, async () => {

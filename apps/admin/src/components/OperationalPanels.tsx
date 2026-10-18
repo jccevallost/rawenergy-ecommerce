@@ -1,7 +1,7 @@
 import { useLeaveGuard } from "./common/UnsavedChanges";
 import { useRef, useState } from "react";
 import { OrderOperations } from "./OrderOperations";
-import { Activity, CreditCard, Database, Mail, MessageCircle, Package, Send, ShieldCheck, Truck, Search, Settings } from "lucide-react";
+import { Activity, CreditCard, Database, Mail, MessageCircle, Send, ShieldCheck, Truck, Search, Settings } from "lucide-react";
 import { CommercePanel } from "../features/settings/CommercePanel";
 import { NotificationsPanel } from "../features/settings/NotificationsPanel";
 import { CashOnDeliveryConfirm } from "./CashOnDeliveryConfirm";
@@ -97,7 +97,10 @@ export function OrdersPanel({ orders, total, status, search, page, dataStatus, o
               <div><b>{order.orderNumber}</b><span>{order.customer.fullName} - {order.customer.phone}</span></div>
               <strong>{formatMoney(order.total)}</strong>
             </header>
-            <p>{order.customer.city}, {order.customer.province} - {order.customer.address}{order.customer.idNumber ? ` · ${order.customer.idType === "PASAPORTE" ? "Pasaporte" : order.customer.idType === "RUC" ? "RUC" : "Cédula"} (factura): ${order.customer.idNumber}` : ""}</p>
+            <p>{order.customer.city}, {order.customer.province} - {order.customer.address}{order.customer.idNumber ? ` · ${order.customer.idType === "PASAPORTE" ? "Pasaporte" : order.customer.idType === "RUC" ? "RUC" : "Cédula"} (${order.invoice?.sameAsBuyer === false ? "comprador" : "factura"}): ${order.customer.idNumber}` : ""}</p>
+            {/* CU07: destinatario y factura solo cuando no son el comprador. */}
+            {order.recipient && !order.recipient.sameAsBuyer && <p><b>Recibe:</b> {order.recipient.name} - {order.recipient.phone}</p>}
+            {order.invoice && !order.invoice.sameAsBuyer && <p><b>Factura a nombre de:</b> {order.invoice.name} · {order.invoice.idNumber}{order.invoice.email ? ` · ${order.invoice.email}` : ""}</p>}
             <small>{shippingLabels[order.shippingMethod]} · Envío {order.shippingFee > 0 ? formatMoney(order.shippingFee) : "gratis"} · {order.discount ? <b className="discount-badge" title="Primera compra con código: confirma por WhatsApp que el celular es de quien compra antes de despachar.">Descuento {order.discount.code}: −{formatMoney(order.discount.amount)} · revisar primera compra</b> : null}{order.discount ? " · " : null}{order.paymentMethod === "CASH_ON_DELIVERY" ? <b className="cod-badge">Contra entrega: cobrar al entregar</b> : "Transferencia"}</small>
             {order.paymentReference && <small>Comprobante: {order.paymentReference}</small>}
             <div className="order-items">

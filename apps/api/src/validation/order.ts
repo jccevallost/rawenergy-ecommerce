@@ -1,10 +1,13 @@
 import { z } from "zod";
 import { emailProblem, findCanton, findProvince, identificationProblem, inferIdType, mobileProblem, normalizeIdentification, normalizeMobile } from "../data/ecuador.js";
+import { billingInputSchema, optionalMobile, optionalText } from "./customerProfile.js";
 
 // Unidades por presentación en un pedido (C60, S04): frena que un solo pedido deje sin
 // existencias a los demás mientras espera el pago. Igual que CART_MAX_QUANTITY de la tienda;
 // para más unidades el cliente escribe por WhatsApp. Valor por omisión pendiente de confirmar por el propietario.
 export const MAX_UNITS_PER_LINE = 20;
+// Líneas por pedido y por cálculo del total (D12): igual que CART_MAX_LINES del carrito.
+export const MAX_CHECKOUT_LINES = 60;
 
 export const checkoutInputSchema = z.object({
   expectedTotal: z.number().nonnegative().max(100000000).optional(),
@@ -36,13 +39,26 @@ export const checkoutInputSchema = z.object({
     productId: z.string().min(1),
     variantSku: z.string().min(3).max(120),
     quantity: z.number().int().min(1).max(MAX_UNITS_PER_LINE, `Máximo ${MAX_UNITS_PER_LINE} unidades por presentación; para más, escríbenos por WhatsApp.`)
-  })).min(1).max(60).refine(items => new Set(items.map(item => JSON.stringify([item.productId, item.variantSku]))).size === items.length, "Agrupa las cantidades de cada presentación en una sola línea"),
+  })).min(1).max(MAX_CHECKOUT_LINES).refine(items => new Set(items.map(item => JSON.stringify([item.productId, item.variantSku]))).size === items.length, "Agrupa las cantidades de cada presentación en una sola línea"),
   shippingMethod: z.enum(["EXPRESS_QUITO_VALLES", "SERVIENTREGA_NATIONAL"]),
   paymentMethod: z.enum(["BANK_TRANSFER", "CASH_ON_DELIVERY"]).default("BANK_TRANSFER"),
   notes: z.string().trim().max(320).optional().default(""),
   paymentReference: z.string().trim().max(120).optional().default(""),
   // Código de descuento (C46); el servidor decide si aplica.
-  discountCode: z.string().trim().toUpperCase().max(30).optional().default("")
+  discountCode: z.string().trim().toUpperCase().max(30).optional().default(""),
+  // CU07: `customer` es el comprador. `delivery` entrega en una dirección guardada (por id y versión, solo con
+  // sesión) o a otra persona; `billing` factura a nombre distinto. Sin ellos el pedido es como siempre.
+  delivery: z.object({
+    addressId: z.string().uuid().optional(),
+    addressUpdatedAt: z.string().max(40).optional(),
+    recipientName: optionalText(100).refine(value => !value || value.length >= 3, "Escribe el nombre de quien recibe."),
+    recipientPhone: optionalMobile
+  }).strict().superRefine((value, context) => {
+    if (value.recipientName && !value.recipientPhone) context.addIssue({ code: z.ZodIssueCode.custom, path: ["recipientPhone"], message: "Escribe el celular de quien recibe." });
+    if (value.recipientPhone && !value.recipientName) context.addIssue({ code: z.ZodIssueCode.custom, path: ["recipientName"], message: "Escribe el nombre de quien recibe." });
+    if (value.addressId && !value.addressUpdatedAt) context.addIssue({ code: z.ZodIssueCode.custom, path: ["addressUpdatedAt"], message: "Actualiza tus direcciones antes de confirmar." });
+  }).optional(),
+  billing: billingInputSchema.optional()
 });
 
 export const orderStatusSchema = z.enum(["PENDING_PAYMENT", "PAYMENT_REVIEW", "PAID", "PREPARING", "SHIPPED", "COMPLETED", "CANCELLED", "RETURNED"]);

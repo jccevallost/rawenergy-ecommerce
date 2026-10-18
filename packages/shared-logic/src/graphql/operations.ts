@@ -17,7 +17,7 @@ export const PRODUCT_FIELDS = gql`
 export const AUTH_FIELDS = gql`
   fragment AuthFields on AuthPayload {
     token
-    user { id name email role status createdAt lastLoginAt }
+    user { id name email role status createdAt lastLoginAt twoFactorEnabled twoFactorRequired emailVerified }
   }
 `;
 
@@ -25,6 +25,8 @@ export const ORDER_FIELDS = gql`
   fragment OrderFields on Order {
     id orderNumber shippingMethod paymentMethod status allowedNextStatuses paidAt confirmedAt deliveryLocation subtotal discount { code percent amount } shippingFee total notes paymentReference createdAt updatedAt
     customer { fullName email phone province city address reference idType idNumber }
+    recipient { name phone sameAsBuyer addressLabel }
+    invoice { name idType idNumber email sameAsBuyer }
     items { productId variantSku title variantLabel image quantity unitPrice lineTotal discount }
   }
 `;
@@ -164,7 +166,7 @@ export const ADMIN_STATS = gql`
 
 export const CHECKOUT_INFO = gql`
   query CheckoutInfo {
-    checkoutInfo { bank { name accountType accountNumber holder } notifiesByEmail whatsapp captchaSiteKey reservationHours freeShippingThreshold freeShippingMethods shippingRates { method fee } cashOnDelivery { enabled expressOnly minimumSubtotal confirmHours } welcomeDiscount { percent minimumSubtotal endsOn code } }
+    checkoutInfo { bank { name accountType accountNumber holder } notifiesByEmail whatsapp captchaSiteKey customerAccounts reservationHours freeShippingThreshold freeShippingMethods shippingRates { method fee } cashOnDelivery { enabled expressOnly minimumSubtotal confirmHours } welcomeDiscount { percent minimumSubtotal endsOn code } }
   }
 `;
 
@@ -256,16 +258,97 @@ export const LOGIN = gql`
   }
 `;
 
+// CU04: el alta no inicia sesión; la cuenta se activa al confirmar el correo. Respuesta uniforme (D05).
 export const REGISTER = gql`
-  ${AUTH_FIELDS}
   mutation Register($input: RegisterInput!) {
-    register(input: $input) { ...AuthFields }
+    register(input: $input) { accepted deliveryAvailable }
   }
 `;
 
+export const LOGOUT = gql`mutation Logout { logout }`;
+
+// CU03/CU05: perfil y libreta de direcciones del cliente.
+export const CUSTOMER_PROFILE_FIELDS = gql`
+  fragment CustomerProfileFields on CustomerProfile {
+    name email phone altPhone revision maxAddresses complete missing defaultAddressId firstPurchase
+    billing { name idType idNumber email }
+    addresses { id label province city address reference recipientName recipientPhone isDefault createdAt updatedAt }
+  }
+`;
+export const MY_PROFILE = gql`
+  ${CUSTOMER_PROFILE_FIELDS}
+  query MyProfile { myProfile { ...CustomerProfileFields } }
+`;
+export const UPDATE_MY_CONTACT = gql`
+  ${CUSTOMER_PROFILE_FIELDS}
+  mutation UpdateMyContact($input: CustomerContactInput!, $revision: Int!) { updateMyContact(input: $input, revision: $revision) { ...CustomerProfileFields } }
+`;
+export const UPDATE_MY_BILLING = gql`
+  ${CUSTOMER_PROFILE_FIELDS}
+  mutation UpdateMyBilling($input: CustomerBillingInput, $revision: Int!) { updateMyBilling(input: $input, revision: $revision) { ...CustomerProfileFields } }
+`;
+export const ADD_MY_ADDRESS = gql`
+  ${CUSTOMER_PROFILE_FIELDS}
+  mutation AddMyAddress($input: CustomerAddressInput!, $revision: Int!, $makeDefault: Boolean) { addMyAddress(input: $input, revision: $revision, makeDefault: $makeDefault) { addressId duplicate madeDefault profile { ...CustomerProfileFields } } }
+`;
+export const UPDATE_MY_ADDRESS = gql`
+  ${CUSTOMER_PROFILE_FIELDS}
+  mutation UpdateMyAddress($id: ID!, $input: CustomerAddressInput!, $revision: Int!) { updateMyAddress(id: $id, input: $input, revision: $revision) { ...CustomerProfileFields } }
+`;
+export const REMOVE_MY_ADDRESS = gql`
+  ${CUSTOMER_PROFILE_FIELDS}
+  mutation RemoveMyAddress($id: ID!, $revision: Int!, $nextDefaultId: ID) { removeMyAddress(id: $id, revision: $revision, nextDefaultId: $nextDefaultId) { ...CustomerProfileFields } }
+`;
+export const SET_MY_DEFAULT_ADDRESS = gql`
+  ${CUSTOMER_PROFILE_FIELDS}
+  mutation SetMyDefaultAddress($id: ID!, $revision: Int!) { setMyDefaultAddress(id: $id, revision: $revision) { ...CustomerProfileFields } }
+`;
+export const MY_SESSIONS = gql`query MySessions { mySessions }`;
+
+// CU09: pedidos del cliente con su propia proyección.
+export const CUSTOMER_ORDER_FIELDS = gql`
+  fragment CustomerOrderFields on CustomerOrder {
+    orderNumber createdAt status paymentMethod shippingMethod confirmedAt paidAt subtotal shippingFee total
+    discount { code percent amount }
+    items { variantSku title variantLabel image quantity unitPrice lineTotal returnedQuantity }
+    delivery { province city address reference }
+    recipient { name phone sameAsBuyer addressLabel }
+    invoice { name idType idNumber email sameAsBuyer }
+    events { status at note }
+    refund { at amount }
+    cancellation { canCancel canRequestCancellation reason blocksAccount }
+    cancellationRequest { status reason createdAt decidedAt publicNote }
+  }
+`;
+export const MY_ORDERS_PAGE = gql`
+  ${CUSTOMER_ORDER_FIELDS}
+  query MyOrdersPage($first: Int, $after: String, $filter: CustomerOrderFilter) {
+    myOrdersPage(first: $first, after: $after, filter: $filter) { hasMore nextCursor orders { ...CustomerOrderFields } }
+  }
+`;
+export const CANCEL_MY_ORDER = gql`
+  ${CUSTOMER_ORDER_FIELDS}
+  mutation CancelMyOrder($number: String!) { cancelMyOrder(number: $number) { alreadyCancelled accountBlocked order { ...CustomerOrderFields } } }
+`;
+export const REQUEST_ORDER_CANCELLATION = gql`
+  ${CUSTOMER_ORDER_FIELDS}
+  mutation RequestOrderCancellation($number: String!, $reason: CancellationReason!, $note: String) { requestOrderCancellation(number: $number, reason: $reason, note: $note) { ...CustomerOrderFields } }
+`;
+export const MY_ORDER = gql`
+  ${CUSTOMER_ORDER_FIELDS}
+  query MyOrder($number: String!) { myOrder(number: $number) { ...CustomerOrderFields } }
+`;
+export const REVOKE_SESSIONS = gql`mutation RevokeSessions { revokeSessions }`;
+export const VERIFY_EMAIL = gql`mutation VerifyEmail($token: String!) { verifyEmail(token: $token) }`;
+export const RESEND_VERIFICATION = gql`mutation ResendVerification($email: String!) { resendVerification(email: $email) { accepted deliveryAvailable } }`;
+export const REQUEST_PASSWORD_RESET = gql`mutation RequestPasswordReset($email: String!) { requestPasswordReset(email: $email) }`;
+export const RESET_PASSWORD = gql`mutation ResetPassword($token: String!, $password: String!) { resetPassword(token: $token, password: $password) }`;
+export const REQUEST_EMAIL_CHANGE = gql`mutation RequestEmailChange($email: String!, $password: String!) { requestEmailChange(email: $email, password: $password) { accepted deliveryAvailable } }`;
+export const CONFIRM_EMAIL_CHANGE = gql`mutation ConfirmEmailChange($token: String!) { confirmEmailChange(token: $token) }`;
+
 export const ME = gql`
   query Me {
-    me { id name email role status createdAt lastLoginAt twoFactorEnabled }
+    me { id name email role status createdAt lastLoginAt twoFactorEnabled twoFactorRequired emailVerified }
   }
 `;
 

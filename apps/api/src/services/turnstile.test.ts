@@ -5,6 +5,7 @@ import { resolvers } from "../graphql/resolvers.js";
 import { typeDefs } from "../graphql/typeDefs.js";
 import { verifyHuman } from "../lib/turnstile.js";
 import { mailService } from "./mail.service.js";
+import { productService } from "./product.service.js";
 import { telegramService } from "./telegram.service.js";
 
 vi.spyOn(mailService, "sendOrderConfirmation").mockResolvedValue(true);
@@ -42,13 +43,14 @@ describe("Turnstile", () => {
   it("protege el registro y los pedidos nuevos, no los reintentos del mismo pedido", async () => {
     enable();
     vi.stubGlobal("fetch", reply({ success: true }));
-    const REGISTER = "mutation($i:RegisterInput!){ register(input:$i){ user { email } } }";
+    const REGISTER = "mutation($i:RegisterInput!){ register(input:$i){ accepted } }";
     const noToken = await run(REGISTER, { i: { name: "Sin token", email: "sin-token@example.test", password: "Clave-segura-99" } });
     expect(noToken.errors?.[0]?.extensions?.code).toBe("CAPTCHA_FAILED");
     expect((await run(REGISTER, { i: { name: "Con token", email: "con-token@example.test", password: "Clave-segura-99", captchaToken: "ok" } })).errors).toBeUndefined();
 
     const ORDER = "mutation($i:CheckoutInput!){ createCheckoutOrder(input:$i){ orderNumber } }";
-    const input = { idempotencyKey: crypto.randomUUID(), customer: { fullName: "Persona real", email: "persona.real@correo.com", phone: "0994445566", province: "Pichincha", city: "Quito", address: "Av. Amazonas N34-100", idNumber: "1700000001" }, items: [{ productId: "demo-2", variantSku: "DP-CREATINE-300G", quantity: 1 }], shippingMethod: "EXPRESS_QUITO_VALLES", paymentMethod: "BANK_TRANSFER" };
+    const quote = { idempotencyKey: crypto.randomUUID(), customer: { fullName: "Persona real", email: "persona.real@correo.com", phone: "0994445566", province: "Pichincha", city: "Quito", address: "Av. Amazonas N34-100", idNumber: "1700000001" }, items: [{ productId: "demo-2", variantSku: "DP-CREATINE-300G", quantity: 1 }], shippingMethod: "EXPRESS_QUITO_VALLES", paymentMethod: "BANK_TRANSFER" };
+    const input = { ...quote, expectedTotal: (await productService.calculateCart(quote.items, "EXPRESS_QUITO_VALLES")).total };
     expect((await run(ORDER, { i: input })).errors?.[0]?.extensions?.code).toBe("CAPTCHA_FAILED");
     const created = await run(ORDER, { i: { ...input, captchaToken: "ok" } });
     expect(created.errors).toBeUndefined();

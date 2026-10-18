@@ -4,30 +4,10 @@ import { flushSync } from "react-dom";
 // Enrutador minimo con la API de historial: la tienda cambia de vista sin recargar,
 // y Atras/Adelante, recargar y compartir el enlace funcionan como en cualquier web.
 // Netlify y `vite preview` devuelven index.html para estas rutas (appType "spa").
-export type Route =
-  | { name: "home" }
-  | { name: "catalog"; search: URLSearchParams }
-  | { name: "product"; slug: string }
-  | { name: "campaign"; slug: string }
-  | { name: "track"; search: URLSearchParams }
-  | { name: "legal"; topic: LegalTopic }
-  | { name: "notFound" };
+import { parse, type Route } from "./routes";
+export { type AccountSection, type LegalTopic, type Route } from "./routes";
 
-export type LegalTopic = "terminos" | "privacidad" | "devoluciones" | "envios";
 type RouteState = { route: Route; href: string; navigations: number; moveFocus: boolean };
-
-const parse = (url: URL): Route => {
-  const path = url.pathname.replace(/\/+$/, "") || "/";
-  if (path === "/") return { name: "home" };
-  if (path === "/catalogo") return { name: "catalog", search: new URLSearchParams(url.search) };
-  if (path === "/pedido") return { name: "track", search: new URLSearchParams(url.search) };
-  const legal = /^\/legal\/(terminos|privacidad|devoluciones|envios)$/.exec(path);
-  if (legal) return { name: "legal", topic: legal[1] as LegalTopic };
-  const product = /^\/producto\/([a-z0-9-]{1,160})$/.exec(path);
-  if (product) return { name: "product", slug: product[1]! };
-  const campaign = /^\/campana\/([a-z0-9-]{1,60})$/.exec(path);
-  return campaign ? { name: "campaign", slug: campaign[1]! } : { name: "notFound" };
-};
 
 const hrefOf = (url: URL) => `${url.pathname}${url.search}`;
 const initialUrl = new URL(window.location.href);

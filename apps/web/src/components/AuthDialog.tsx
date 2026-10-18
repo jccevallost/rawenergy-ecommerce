@@ -1,23 +1,26 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { ApolloError, gql, useApolloClient, useMutation, useQuery } from "@apollo/client";
 import { Eye, EyeOff, X } from "lucide-react";
-import { CHECKOUT_INFO, type CheckoutInfo, LOGIN, REGISTER, type AuthPayload, type AuthUser } from "@vital-forge/shared-logic";
+import { type AccountRequestResult, CHECKOUT_INFO, type CheckoutInfo, LOGIN, REGISTER, REQUEST_PASSWORD_RESET, type AuthPayload, type AuthUser } from "@vital-forge/shared-logic";
 import { emailProblem } from "../lib/ecuador";
 import { Turnstile } from "./Turnstile";
 import { friendlyError } from "../lib/errors";
 import { useModalA11y } from "../lib/useModalA11y";
 import { whatsappHref } from "../lib/whatsapp";
 
-export type AuthMode = "login" | "register";
-type AuthMutationResult = { login?: AuthPayload; register?: AuthPayload };
+// CU04: «forgot» pide el enlace de recuperación por correo.
+export type AuthMode = "login" | "register" | "forgot";
+type AuthMutationResult = { login?: AuthPayload; register?: AccountRequestResult };
 type Field = "name" | "email" | "password";
 
 /** Mismo patrón que el formulario de entrega (C57): mensaje propio bajo el campo, sin la burbuja del navegador. */
-function problems(form: Record<Field, string>, isLogin: boolean) {
+function problems(form: Record<Field, string>, mode: AuthMode) {
   const found: Partial<Record<Field, string>> = {};
-  if (!isLogin && form.name.trim().length < 2) found.name = form.name.trim() ? "Escribe al menos 2 caracteres." : "Escribe tu nombre completo.";
+  const isLogin = mode === "login";
+  if (mode === "register" && form.name.trim().length < 2) found.name = form.name.trim() ? "Escribe al menos 2 caracteres." : "Escribe tu nombre completo.";
   if (!form.email.trim()) found.email = "Escribe tu correo, por ejemplo nombre@gmail.com.";
   else { const issue = emailProblem(form.email); if (issue) found.email = issue; }
+  if (mode === "forgot") return found;
   if (!form.password) found.password = "Escribe tu contraseña.";
   else if (!isLogin && form.password.length < 8) found.password = "La contraseña necesita al menos 8 caracteres.";
   return found;
@@ -45,12 +48,16 @@ export function AuthDialog({ mode, adminUrl, onMode, onClose, onAuthed }: { mode
   const [showPassword, setShowPassword] = useState(false);
   const [login, loginState] = useMutation<AuthMutationResult>(LOGIN);
   const [register, registerState] = useMutation<AuthMutationResult>(REGISTER);
+  const [requestReset, resetState] = useMutation(REQUEST_PASSWORD_RESET);
+  // CU04: confirmación de lo que pasó (alta enviada, enlace de recuperación); no se borra al cambiar de pestaña.
+  const [notice, setNotice] = useState("");
   const { data: info } = useQuery<{ checkoutInfo: CheckoutInfo }>(CHECKOUT_INFO);
   const whatsapp = info?.checkoutInfo.whatsapp;
-  const loading = loginState.loading || registerState.loading;
+  const loading = loginState.loading || registerState.loading || resetState.loading;
   const { dialogRef, headingRef } = useModalA11y<HTMLFormElement, HTMLHeadingElement>(onClose);
   const errorRef = useRef<HTMLDivElement>(null);
   const isLogin = mode === "login";
+  const isForgot = mode === "forgot";
 
   useEffect(() => { headingRef.current?.focus(); setError(""); setFieldErrors({}); }, [mode, headingRef]);
   useEffect(() => { if (error || staffAccount) errorRef.current?.focus(); }, [error, staffAccount]);
@@ -59,16 +66,33 @@ export function AuthDialog({ mode, adminUrl, onMode, onClose, onAuthed }: { mode
     event.preventDefault();
     if (loading) return;
     setError("");
-    const found = problems(form, isLogin);
+    const found = problems(form, mode);
     setFieldErrors(found);
     const first = (["name", "email", "password"] as const).find(field => found[field]);
     if (first) { document.getElementById(`auth-${first}`)?.focus(); return; }
     if (!isLogin && info?.checkoutInfo.captchaSiteKey && !captchaToken && !captchaUnavailable) { setError("Estamos comprobando la conexión de forma segura. Vuelve a pulsar «Crear cuenta» en unos segundos."); return; }
+    if (isForgot) {
+      try {
+        await requestReset({ variables: { email: form.email.trim() } });
+        // Respuesta uniforme: no se dice si el correo tiene cuenta.
+        setNotice(`Si ${form.email.trim()} tiene una cuenta, te enviamos un enlace para crear una contraseña nueva. Vence en 30 minutos.`);
+        onMode("login");
+      } catch (caught) { setError(friendlyError(caught, "No pudimos enviar el enlace. Vuelve a intentarlo.")); }
+      return;
+    }
     try {
       const result = isLogin
         ? await login({ variables: { input: { email: form.email.trim(), password: form.password } } })
         : await register({ variables: { input: { ...form, name: form.name.trim(), email: form.email.trim(), ...(captchaToken ? { captchaToken } : {}) } } }).finally(() => setCaptchaReset(value => value + 1));
-      const payload = isLogin ? result.data?.login : result.data?.register;
+      if (!isLogin) {
+        // CU04: el alta no inicia sesión; la cuenta se activa al confirmar el correo.
+        if (!result.data?.register) return;
+        setNotice(`Te enviamos un enlace a ${form.email.trim()} para confirmar tu correo. Después entra con tu contraseña.`);
+        setForm(current => ({ ...current, password: "" }));
+        onMode("login");
+        return;
+      }
+      const payload = result.data?.login;
       if (!payload) return;
       if (payload.user.role !== "CUSTOMER") {
         await client.mutate({ mutation: END_SESSION, context: { headers: { authorization: `Bearer ${payload.token}` } } }).catch(() => undefined);
@@ -98,20 +122,23 @@ export function AuthDialog({ mode, adminUrl, onMode, onClose, onAuthed }: { mode
     <div className="modal-backdrop auth-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
       <form className="modal auth-card" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="auth-heading" aria-describedby="auth-intro" onSubmit={submit} noValidate>
         <button className="icon-btn modal-close" type="button" onClick={onClose} aria-label="Cerrar"><X size={20} /></button>
-        <h2 id="auth-heading" ref={headingRef} tabIndex={-1}>{isLogin ? "Entrar a mi cuenta" : "Crear cuenta"}</h2>
+        <h2 id="auth-heading" ref={headingRef} tabIndex={-1}>{isForgot ? "Recuperar mi contraseña" : isLogin ? "Entrar a mi cuenta" : "Crear cuenta"}</h2>
 
-        <div className="auth-switch" role="group" aria-label="Elige cómo continuar">
+        {notice && <p className="notice" role="status">{notice}</p>}
+        {!isForgot && <div className="auth-switch" role="group" aria-label="Elige cómo continuar">
           <button type="button" aria-pressed={isLogin} onClick={() => onMode("login")}>Entrar</button>
           <button type="button" aria-pressed={!isLogin} onClick={() => onMode("register")}>Crear cuenta</button>
-        </div>
+        </div>}
 
-        <p id="auth-intro" className="muted auth-intro">{isLogin
+        <p id="auth-intro" className="muted auth-intro">{isForgot
+          ? "Escribe el correo de tu cuenta y te enviamos un enlace para crear una contraseña nueva."
+          : isLogin
           ? "Consulta tus pedidos y su estado."
-          : "Guarda tus pedidos en un solo lugar. Los que hiciste sin cuenta con este correo se agregan a Mis pedidos: los de este dispositivo al instante y los demás con su número."}</p>
+          : "Guarda tus pedidos en un solo lugar. Te enviaremos un enlace para confirmar tu correo; después, los pedidos que hiciste sin cuenta con ese correo se agregan a Mis pedidos."}</p>
 
         {!isLogin && <label className="field"><span>Nombre completo</span><input {...fieldProps("name")} autoComplete="name" minLength={2} maxLength={100} value={form.name} onChange={event => change("name", event.target.value)} required />{fieldError("name")}</label>}
         <label className="field"><span>Correo</span><input type="email" {...fieldProps("email")} autoComplete="email" inputMode="email" maxLength={120} value={form.email} onChange={event => change("email", event.target.value)} placeholder="tu@correo.com" required />{fieldError("email")}</label>
-        <div className="field">
+        {!isForgot && <div className="field">
           <label htmlFor="auth-password">Contraseña</label>
           <div className="password-field">
             <input {...fieldProps("password", isLogin ? undefined : "auth-password-help")} type={showPassword ? "text" : "password"} autoComplete={isLogin ? "current-password" : "new-password"} minLength={isLogin ? 1 : 8} maxLength={200} value={form.password} onChange={event => change("password", event.target.value)} required />
@@ -121,17 +148,19 @@ export function AuthDialog({ mode, adminUrl, onMode, onClose, onAuthed }: { mode
           </div>
           {fieldError("password")}
           {!isLogin && <small id="auth-password-help" className="field-help">Mínimo 8 caracteres. Evita contraseñas comunes y tu correo.</small>}
-        </div>
+        </div>}
 
         {staffAccount
           ? <div id="auth-error" className="notice" role="alert" tabIndex={-1} ref={errorRef}><span>Esta es una cuenta del personal: entra por el panel. En la tienda solo se usan cuentas de cliente.</span> <a className="btn btn-primary btn-sm" href={adminUrl}>Ir al panel</a></div>
           : error && <div id="auth-error" className="notice notice-error" role="alert" tabIndex={-1} ref={errorRef}>{error}</div>}
-        {!isLogin && info?.checkoutInfo.captchaSiteKey && <Turnstile siteKey={info.checkoutInfo.captchaSiteKey} resetKey={captchaReset} onToken={setCaptchaToken} onUnavailable={() => setCaptchaUnavailable(true)} />}
-        {!isLogin && captchaUnavailable && <p className="field-help" role="status">No se pudo cargar la verificación de seguridad. Si tienes un bloqueador, permítelo en esta tienda y recarga la página.</p>}
-        <button className="btn btn-primary btn-block btn-lg" disabled={loading}>{loading ? "Validando…" : isLogin ? "Entrar" : "Crear cuenta"}</button>
+        {mode === "register" && info?.checkoutInfo.captchaSiteKey && <Turnstile siteKey={info.checkoutInfo.captchaSiteKey} resetKey={captchaReset} onToken={setCaptchaToken} onUnavailable={() => setCaptchaUnavailable(true)} />}
+        {mode === "register" && captchaUnavailable && <p className="field-help" role="status">No se pudo cargar la verificación de seguridad. Si tienes un bloqueador, permítelo en esta tienda y recarga la página.</p>}
+        <button className="btn btn-primary btn-block btn-lg" disabled={loading}>{loading ? "Validando…" : isForgot ? "Enviar enlace" : isLogin ? "Entrar" : "Crear cuenta"}</button>
 
         <div className="auth-foot">
-          {isLogin && whatsapp && <a href={whatsappHref(whatsapp, "Hola RawEnergy, olvidé la contraseña de mi cuenta de la tienda.")} target="_blank" rel="noopener noreferrer">¿Olvidaste tu contraseña? Escríbenos por WhatsApp<span className="sr-only"> (se abre en otra pestaña)</span></a>}
+          {isLogin && <button type="button" className="btn-link" onClick={() => { setNotice(""); onMode("forgot"); }}>¿Olvidaste tu contraseña?</button>}
+          {isForgot && <button type="button" className="btn-link" onClick={() => onMode("login")}>Volver a entrar</button>}
+          {isForgot && whatsapp && <a href={whatsappHref(whatsapp, "Hola RawEnergy, no puedo recuperar la contraseña de mi cuenta de la tienda.")} target="_blank" rel="noopener noreferrer">¿No llega el correo? Escríbenos por WhatsApp<span className="sr-only"> (se abre en otra pestaña)</span></a>}
           <button type="button" className="btn-link" onClick={onClose}>Seguir comprando sin cuenta</button>
         </div>
       </form>

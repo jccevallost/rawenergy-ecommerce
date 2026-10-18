@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useLazyQuery, useQuery } from "@apollo/client";
-import { CheckCircle2, Circle, Clock3, MessageCircle, XCircle } from "lucide-react";
+import { Clock3, MessageCircle, XCircle } from "lucide-react";
+import { OrderProgress } from "../components/OrderProgress";
 import { CHECKOUT_INFO, type CheckoutInfo, TRACK_ORDER, type TrackedOrder } from "@vital-forge/shared-logic";
 import { formatMoney } from "@vital-forge/ui-core";
 import { catalogHref } from "../lib/catalogUrl";
@@ -10,22 +11,6 @@ import { ecuadorDateTime, paymentLabels, shippingLabels, statusLabel } from "../
 import { Link, usePageEntry } from "../lib/router";
 import { useSingleFlight } from "../lib/useSingleFlight";
 import { orderWhatsappMessage, whatsappHref } from "../lib/whatsapp";
-
-const transferSteps = [
-  { label: "Pedido registrado", states: ["PENDING_PAYMENT", "PAYMENT_REVIEW", "PAID", "PREPARING", "SHIPPED", "COMPLETED"] },
-  { label: "Pago confirmado", states: ["PAID", "PREPARING", "SHIPPED", "COMPLETED"] },
-  { label: "Preparando", states: ["PREPARING", "SHIPPED", "COMPLETED"] },
-  { label: "En camino", states: ["SHIPPED", "COMPLETED"] },
-  { label: "Entregado", states: ["COMPLETED"] }
-];
-// Contra entrega: se confirma por WhatsApp (C36) y el pago ocurre al entregar.
-const deliverySteps = [
-  { label: "Pedido registrado", states: ["PENDING_PAYMENT", "PAID", "PREPARING", "SHIPPED", "COMPLETED"] },
-  { label: "Confirmado por WhatsApp", states: ["CONFIRMED", "PAID", "PREPARING", "SHIPPED", "COMPLETED"] },
-  { label: "Preparando", states: ["PREPARING", "SHIPPED", "COMPLETED"] },
-  { label: "En camino", states: ["SHIPPED", "COMPLETED"] },
-  { label: "Entregado y pagado", states: ["COMPLETED"] }
-];
 
 function OrderResult({ order, info }: { order: TrackedOrder; info?: CheckoutInfo }) {
   const onDelivery = order.paymentMethod === "CASH_ON_DELIVERY";
@@ -42,12 +27,7 @@ function OrderResult({ order, info }: { order: TrackedOrder; info?: CheckoutInfo
       {closed ? (
         <p className="notice notice-error reserve-note"><XCircle size={18} aria-hidden="true" /> {order.status === "CANCELLED" ? "Este pedido fue cancelado y sus productos volvieron al catálogo. Si ya transferiste, escríbenos con tu comprobante." : "Este pedido fue devuelto."}</p>
       ) : (
-        <ol className="track-steps">
-          {(onDelivery ? deliverySteps : transferSteps).map(step => {
-            const done = step.states.includes(order.status) || (step.states.includes("CONFIRMED") && order.status === "PENDING_PAYMENT" && !order.awaitingConfirmation);
-            return <li key={step.label} className={done ? "is-done" : ""}>{done ? <CheckCircle2 size={20} aria-hidden="true" /> : <Circle size={20} aria-hidden="true" />}<span>{step.label}<span className="sr-only">{done ? ": completado" : ": pendiente"}</span></span></li>;
-          })}
-        </ol>
+        <OrderProgress status={order.status} paymentMethod={order.paymentMethod} confirmed={!order.awaitingConfirmation} />
       )}
       {order.status === "PENDING_PAYMENT" && order.reservedUntil && order.awaitingConfirmation && (
         <p className="notice reserve-note"><Clock3 size={18} aria-hidden="true" /><span>{whatsapp ? "Confírmalo por WhatsApp y envíanos tu ubicación" : "Te contactamos para confirmarlo y pedirte tu ubicación"} antes del <b>{ecuadorDateTime(order.reservedUntil)}</b>; si no, el pedido se cancela automáticamente.</span></p>
