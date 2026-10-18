@@ -149,8 +149,11 @@ describe("ProductService demo mode", () => {
       // Todo agotado: rango completo; la tienda muestra «Agotado» y no un precio imposible de comprar.
       await productService.changeStock(id, "RANGO-MEDIA", -3, { reason: "Venta de prueba" });
       expect(await range()).toEqual({ min: 21.5, max: 52 });
-      // Una edición de la ficha con la barata sin stock tampoco la usa como «desde».
+      // Una edición de la ficha con la barata sin stock tampoco la usa como «desde». El stock entra por ajuste (M42).
+      await productService.changeStock(id, "RANGO-MEDIA", 1, { reason: "Reposición de prueba" });
       await productService.upsert(id, { ...payload, variants: [variant("RANGO-BARATA", 21.5, 0), variant("RANGO-MEDIA", 38.25, 1), variant("RANGO-CARA", 52, 0)] });
+      // M42: la ficha no cambia el stock de una presentación existente.
+      await expect(productService.upsert(id, { ...payload, variants: [variant("RANGO-BARATA", 21.5, 5), variant("RANGO-MEDIA", 38.25, 1), variant("RANGO-CARA", 52, 0)] })).rejects.toThrow(/no se cambia desde la ficha/);
       expect(await range()).toEqual({ min: 38.25, max: 38.25 });
     } finally { await productService.archive(id); }
   });

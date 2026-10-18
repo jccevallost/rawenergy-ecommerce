@@ -4,7 +4,7 @@ import { ProductModel } from "../models/Product.js";
 import { OrderModel } from "../models/Order.js";
 import { productService } from "./product.service.js";
 import { orderService } from "./order.service.js";
-import mongoose from "mongoose";
+import { usesMongo } from "../lib/persistence.js";
 import { MediaModel } from "../models/Media.js";
 
 /** Formatos que aceptamos subir. No se confia en la extension del archivo. */
@@ -28,7 +28,7 @@ type StoredMedia = { contentType: string; size: number; data: Buffer; thumbnail?
 class MediaService {
   private memory = new Map<string, StoredMedia>();
   private get useMongo() {
-    return mongoose.connection.readyState === 1;
+    return usesMongo();
   }
 
   isAllowed(contentType?: string) {

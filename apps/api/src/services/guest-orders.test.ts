@@ -16,7 +16,8 @@ const server = new ApolloServer({ typeDefs, resolvers });
 const LINK = "mutation($n:[String!]!){ linkGuestOrders(orderNumbers:$n){ linked orderNumbers } }";
 const MINE = "query{ myOrders { orderNumber } }";
 const customer = { fullName: "Persona de prueba", email: "invitada@example.test", phone: "0991234567", province: "Pichincha", city: "Quito", address: "Calle de prueba 123", idNumber: "1700000001" };
-const account = (email: string, role = "CUSTOMER") => ({ id: `u-${randomUUID()}`, name: "Cuenta", email, role, status: "ACTIVE" as const });
+// CU04 (D10): vincular exige el correo confirmado; `verified: false` simula una cuenta sin confirmar.
+const account = (email: string, role = "CUSTOMER", verified = true) => ({ id: `u-${randomUUID()}`, name: "Cuenta", email, role, status: "ACTIVE" as const, emailVerified: verified });
 let item: { productId: string; variantSku: string };
 
 async function run(query: string, variables: Record<string, unknown>, user: unknown) {
@@ -44,6 +45,13 @@ describe("Pedidos de invitado en «Mis pedidos» (C44)", () => {
     expect(mine.data?.myOrders.map((o: { orderNumber: string }) => o.orderNumber)).toContain(number);
     const stored = await orderService.findByNumber(number) as { history?: Array<{ reason: string }> };
     expect(stored.history?.at(-1)?.reason).toBe("Vinculado a la cuenta del cliente");
+  });
+
+  it("una cuenta con el correo sin confirmar no vincula pedidos aunque coincidan número y correo (D10)", async () => {
+    const number = await guestOrder();
+    const result = await run(LINK, { n: [number] }, account(customer.email, "CUSTOMER", false));
+    expect(result.errors?.[0]?.extensions?.code).toBe("FORBIDDEN");
+    expect((await orderService.findByNumber(number) as { userId?: string | null }).userId ?? null).toBeNull();
   });
 
   it("no enlaza el pedido de otro correo aunque se conozca el número", async () => {

@@ -84,7 +84,8 @@ describe("Regresiones de la revisión del panel",()=>{
   });
   it("conserva el pedido de un invitado en auditoría y atribuye un inicio de sesión exitoso a su cuenta",async()=>{
     const f=await fixture();
-    const result=await execute('mutation($input:CheckoutInput!){createCheckoutOrder(input:$input){id}}',{input:f.checkout},null);
+    const expectedTotal=(await productService.calculateCart(f.checkout.items,"EXPRESS_QUITO_VALLES")).total;
+    const result=await execute('mutation($input:CheckoutInput!){createCheckoutOrder(input:$input){id}}',{input:{...f.checkout,expectedTotal}},null);
     expect(result.errors).toBeUndefined();
     const id=(result.data?.createCheckoutOrder as {id:string}).id;
     const event=(await auditService.list({search:id,status:"SUCCESS"})).rows.find(row=>row.action==="createCheckoutOrder")!;

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, Cloud, Combine, Sparkles, Upload, Package, Plus, Edit3, Trash2, RotateCcw, Copy, Star } from "lucide-react";
 import { useQuery } from "@apollo/client";
 import { similarBrand } from "./brandHint";
-import { generateVariantMatrix, type Product, TAXONOMY, type TaxonomyOverview, type VariantDraft, useUpsertProduct } from "@vital-forge/shared-logic";
+import { generateVariantMatrix, type Product, TAXONOMY, type TaxonomyOverview, useUpsertProduct } from "@vital-forge/shared-logic";
 
 // Formatos de tamaño más usados: misma unidad en todo el catálogo («porciones», no «medidas»).
 const sizeSuggestions = ["1 lb", "2 lb", "5 lb", "300 g", "600 g", "1 kg", "2 kg", "30 porciones", "60 cápsulas"];
@@ -142,7 +142,8 @@ export function ProductEditor({ ownerId, product, onDone, onCancel, onDirtyChang
               if (form.variants.length+added.length>120 || added.some(v=>!v.flavor.trim() || v.flavor.trim().length>80 || !Number.isFinite(v.size.value) || v.size.value<=0 || !v.size.unit.trim() || v.size.unit.trim().length>12)) { setBlocked("Revisa las opciones y tamaños: usa cantidades positivas (por ejemplo, 2 lb o 1,5 kg), unidades de hasta 12 caracteres y un máximo de 120 variantes."); return; }
               if (await confirm({ title: "Agregar combinaciones", message: `Se agregarán ${added.length} combinaciones. Las variantes existentes conservarán sus datos.`, confirmLabel: "Agregar" })) { setBlocked(""); change("variants", [...form.variants, ...added]); }
             }}>Generar combinaciones</button></div>
-            <VariantMatrix disabled={loading || saved || !!pendingDraft} stockReadonly={!canManageStock} onRemove={(index) => change("variants", form.variants.filter((_, i) => i !== index))} onBusyChange={setUploading} variants={form.variants} onChange={(variants) => change("variants", variants)} title={form.title} />
+            {product?.id && <p className="field-hint">El stock se cambia con compras, ajustes de lote o traslados, que registran su origen.</p>}
+            <VariantMatrix disabled={loading || saved || !!pendingDraft} stockReadonly={!canManageStock || Boolean(product?.id)} onRemove={(index) => change("variants", form.variants.filter((_, i) => i !== index))} onBusyChange={setUploading} variants={form.variants} onChange={(variants) => change("variants", variants)} title={form.title} />
           </section>
 
           <section className="panel">

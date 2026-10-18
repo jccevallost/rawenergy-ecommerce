@@ -80,8 +80,42 @@ describe("Verificación en dos pasos del personal", () => {
     expect((await run(LOGIN, { i: input })).errors).toBeUndefined();
   });
 
+  it("una sesión sola no sustituye el segundo factor activo y los cambios cierran las otras sesiones (D02)", async () => {
+    const password = "Clave-de-gerencia-88";
+    const staff = await authService.saveAccount(admin, undefined, { name: "Gerencia D02", email: "d02@example.test", password, role: "MANAGER", status: "ACTIVE" });
+    const here = await authService.login({ email: staff.email, password });
+    const elsewhere = await authService.login({ email: staff.email, password });
+    const actor = (await authService.me(here.token))!;
+    const CONFIRM = "mutation($c:String!){ confirmTwoFactorSetup(code:$c){ recoveryCodes } }";
+    const setup = (await run("mutation { startTwoFactorSetup { secret } }", {}, actor)).data!.startTwoFactorSetup as { secret: string };
+    // Dos confirmaciones a la vez: una sola entrega códigos de recuperación.
+    const code = totpCode(setup.secret, currentStep());
+    const both = await Promise.all([run(CONFIRM, { c: code }, actor), run(CONFIRM, { c: code }, actor)]);
+    expect(both.filter((r) => !r.errors)).toHaveLength(1);
+    const recovery = (both.find((r) => !r.errors)!.data!.confirmTwoFactorSetup as { recoveryCodes: string[] }).recoveryCodes;
+    // Al activarlo sigue la sesión actual y se cierra la del otro dispositivo.
+    expect(await authService.me(here.token)).not.toBeNull();
+    expect(await authService.me(elsewhere.token)).toBeNull();
+
+    // Con el factor activo no se puede empezar otra alta ni confirmar un secreto nuevo.
+    const current = (await authService.me(here.token))!;
+    const replace = await run("mutation { startTwoFactorSetup { secret } }", {}, current);
+    expect(replace.errors?.[0]?.message).toMatch(/ya está activa/);
+    expect((await run(CONFIRM, { c: totpCode(setup.secret, currentStep()) }, current)).errors?.[0]?.message).toMatch(/ya está activa/);
+    const withCode = await authService.login({ email: staff.email, password, code: totpCode(setup.secret, currentStep() + 1) });
+    expect(withCode.user.twoFactorEnabled).toBe(true);
+
+    // Desactivar con un código de recuperación también cierra las otras sesiones; luego se puede volver a activar.
+    expect((await run("mutation($c:String!){ disableTwoFactor(code:$c) }", { c: recovery[0] }, current)).errors).toBeUndefined();
+    expect(await authService.me(withCode.token)).toBeNull();
+    const after = (await authService.me(here.token))!;
+    expect(after.twoFactorEnabled).toBe(false);
+    const again = (await run("mutation { startTwoFactorSetup { secret } }", {}, after)).data!.startTwoFactorSetup as { secret: string };
+    expect(again.secret).not.toBe(setup.secret);
+  });
+
   it("no es para cuentas de cliente", async () => {
-    const customer = await authService.register({ name: "Cliente dos pasos", email: "cliente-dos-pasos@example.test", password: "Clave-cliente-55" });
+    const customer = await authService.createVerifiedCustomer({ name: "Cliente dos pasos", email: "cliente-dos-pasos@example.test", password: "Clave-cliente-55" });
     const user = (await authService.me(customer.token))!;
     expect((await run("mutation { startTwoFactorSetup { secret } }", {}, user)).errors?.[0]?.extensions?.code).toBe("FORBIDDEN");
   });

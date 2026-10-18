@@ -238,10 +238,13 @@ try {
   await cdp('Page.navigate', { url: ui }); await waitFor(() => js('document.querySelectorAll(".rail-track .card").length>0'), 'Portada tras legales');
   checks.push('Políticas legales sin datos inventados y nutrición «No declarado» cuando la etiqueta no lo informa');
 
-  await click('.header-actions > .header-action'); await has('Entrar a mi cuenta');
-  await fill('.auth-card input[type=email]', 'unknown@example.test'); await fill('.auth-card input[type=password]', 'wrong-password'); await click('.auth-card .btn-primary'); await waitFor(() => js('!!document.querySelector(".auth-card .notice-error")'), 'Credenciales inválidas explicadas');
-  await inspectAccessibility('Acceso con error'); await click('.auth-card .modal-close');
-  checks.push('Acceso fallido conserva pantalla, anuncia error y no deja excepción sin controlar');
+  // CLI-01 (14/10/2026): la tienda no ofrece cuentas de cliente; la cabecera lleva a «Consulta tu pedido».
+  await waitFor(() => js('!!document.querySelector(".header-actions > a.header-action[href$=pedido]")'), 'Acceso a Consulta tu pedido en la cabecera');
+  await click('.header-actions > .header-action'); await waitFor(() => js('location.pathname==="/pedido"'), 'Consulta tu pedido'); await has('Consulta tu pedido');
+  await inspectAccessibility('Consulta tu pedido desde la cabecera');
+  await assert.rejects(gql('mutation($input:RegisterInput!){register(input:$input){accepted}}', { input: { name: 'Persona nueva', email: `nueva-${Date.now()}@example.com`, password: 'Persona-nueva-2026' } }), /ya no usa cuentas de cliente/);
+  await cdp('Page.navigate', { url: ui }); await waitFor(() => js('document.querySelectorAll(".rail-track .card").length>0'), 'Portada tras consultar pedido');
+  checks.push('Sin cuentas de cliente (CLI-01): la cabecera lleva a Consulta tu pedido y la API no crea cuentas');
 
   await fill('#buscar', 'zzzzsinproducto'); await click('.header-search-submit'); await has('No encontramos productos'); await click('.empty-state .btn-primary');
   await waitFor(async () => await cardCount() === catalogTotal, 'Limpiar búsqueda');
@@ -337,7 +340,9 @@ try {
   await waitFor(() => js(`document.querySelector(".checkout-summary-total").textContent.includes("100,00") && !${codRadio}.disabled`), 'Express gratis y contra entrega disponible');
   await js(`${codRadio}.click()`); await has('Pagas el total al recibir');
   await fill('select[name=province]', 'Guayas'); await fill('select[name=city]', 'Guayaquil');
-  await waitFor(() => js(`${codRadio}.disabled && document.querySelectorAll("input[name=paymentMethod]")[0].checked`), 'Fuera de Quito vuelve a transferencia');
+  // CU08: ya no vuelve a transferencia en silencio; explica el motivo y deja la forma de pago sin elegir.
+  await waitFor(() => js(`${codRadio}.disabled && ![...document.querySelectorAll("input[name=paymentMethod]")].some(input => input.checked)`), 'Fuera de Quito: contra entrega deja de aplicar y no se elige otra en silencio');
+  await has('Contra entrega ya no está disponible para este pedido');
   await has('Solo con envío express en Quito y Valles');
   await waitFor(() => js('document.querySelector(".checkout-summary-total").textContent.includes("105,00")'), 'Nacional cobra 5 USD aunque pase el umbral: el gratis es solo express');
   await fill('select[name=province]', 'Pichincha'); await click('input[name=shippingMethod]');
@@ -356,20 +361,19 @@ try {
   await shot('14-confirmacion-contra-entrega');
   const codOrders = (await gql('{orders{orders{paymentMethod total shippingFee status}}}', {}, token)).orders.orders.filter(order => order.paymentMethod === 'CASH_ON_DELIVERY');
   assert.deepEqual(codOrders, [{ paymentMethod: 'CASH_ON_DELIVERY', total: 100, shippingFee: 0, status: 'PENDING_PAYMENT' }], 'Un pedido contra entrega de 100 USD');
-  checks.push('Contra entrega: confirmación por WhatsApp con ubicación y plazo visible (C36); sin mínimo; express gratis desde el umbral, nacional siempre 5 USD; fuera de Quito vuelve a transferencia; tres clics, un pedido');
+  checks.push('Contra entrega: confirmación por WhatsApp con ubicación y plazo visible (C36); sin mínimo; express gratis desde el umbral, nacional siempre 5 USD; fuera de Quito contra entrega se explica y no se cambia en silencio (CU08); tres clics, un pedido');
   // Límite real de /graphql (C28): el 429 lleva CORS y la tienda pide esperar en lugar de decir «sin conexión».
-  const { register: { token: customerToken } } = await gql('mutation($input:RegisterInput!){register(input:$input){token}}', { input: { name: 'Cliente con cuenta', email: `limite-${Date.now()}@example.com`, password: 'Cliente-123!' } });
   let limited;
   for (let i = 0; i < 900 && !limited; i++) { const response = await fetch(`${api}/graphql`, { method: 'POST', headers: { 'content-type': 'application/json', origin: ui }, body: '{"query":"{checkoutInfo{whatsapp}}"}' }); if (response.status === 429) limited = response; else await response.arrayBuffer(); }
   assert(limited, 'El límite de /graphql responde 429');
   assert.equal(limited.headers.get('access-control-allow-origin'), ui, '429 con cabecera CORS');
   const status = async auth => (await fetch(`${api}/graphql`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${auth}` }, body: '{"query":"{checkoutInfo{whatsapp}}"}' })).status;
   assert.equal(await status(token), 200, 'El personal con sesión sigue operando');
-  assert.equal(await status(customerToken), 429, 'Un cliente con sesión sigue sujeto al límite');
+  assert.equal(await status(''), 429, 'Un visitante sin sesión sigue sujeto al límite');
   await cdp('Page.navigate', { url: `${ui}/catalogo?q=limite-real` }); await has('Demasiadas solicitudes seguidas');
   assert(await js('!document.body.innerText.includes("No hay conexión")'), 'Límite real no se confunde con falta de conexión');
   await shot('15-limite-real');
-  checks.push('Límite real de /graphql alcanzado: 429 con CORS, la tienda pide esperar, el personal sigue operando y un cliente con sesión no');
+  checks.push('Límite real de /graphql alcanzado: 429 con CORS, la tienda pide esperar, el personal sigue operando y un visitante sin sesión no');
   assert.deepEqual(exceptions, []);
   await writeFile(join(out, 'report.json'), JSON.stringify({ ok: true, checks, accessibility, homeReadyMs, metrics, caveats: ['API demo local, build producción, caché fría inicial, sin throttling', 'Límite de /graphql elevado a 400/min por IP para el recorrido automatizado; producción usa 120 salvo que se configure', 'Fotos externas bloqueadas; no mide carga de fotos reales ni p75 producción', 'Datos y pedidos de prueba solo en memoria'] }, null, 2));
   console.log(JSON.stringify({ ok: true, artifacts: out, homeReadyMs, lcp: metrics.lcp, checks }));

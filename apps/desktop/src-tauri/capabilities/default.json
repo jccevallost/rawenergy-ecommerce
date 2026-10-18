@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "WIN-01: la página remota del panel no recibe permisos nativos.",
+  "windows": [],
+  "permissions": []
+}

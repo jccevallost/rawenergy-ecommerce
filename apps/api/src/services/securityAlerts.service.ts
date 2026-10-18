@@ -11,7 +11,7 @@ const FAILURES_TO_ALERT = 5;
 const LIMITED_WINDOW_MS = 5 * 60_000;
 const LIMITED_TO_ALERT = 30;
 const MAX_TRACKED = 5000;
-const roleNames: Record<AuthRole, string> = { CUSTOMER: "Cliente", CATALOG: "Catálogo", WAREHOUSE: "Bodega", MANAGER: "Gerencia", ADMIN: "Administración" };
+const roleNames: Record<AuthRole, string> = { CUSTOMER: "Cliente", CATALOG: "Catálogo", WAREHOUSE: "Bodega", MANAGER: "Gerencia", STORE_MANAGER: "Jefe de tienda", ADMIN: "Administración" };
 
 export function createSecurityAlerts(deps: {
   now?: () => number;
@@ -64,6 +64,10 @@ export function createSecurityAlerts(deps: {
     /** Administración quitó el segundo factor de otra cuenta (C69). */
     twoFactorReset(actor: { name: string; email: string }, target: { name: string; email: string }) {
       track(send("alerta de segundo factor", `Seguridad: ${actor.name} (${actor.email}) quitó la verificación en dos pasos de la cuenta ${target.name} (${target.email}) y cerró sus sesiones. Si no lo esperabas, revisa Cuentas en el panel.`));
+    },
+    /** Una cuenta del personal activó o desactivó su segundo factor (D02). */
+    twoFactorChanged(account: { name: string; email: string }, enabled: boolean) {
+      track(send("alerta de segundo factor", `Seguridad: la cuenta ${account.name} (${account.email}) ${enabled ? "activó" : "desactivó"} la verificación en dos pasos y se cerraron sus sesiones en otros dispositivos. Si no fue esa persona, revisa Cuentas en el panel.`));
     },
     async flush() { while (pending.size) await Promise.all([...pending]); }
   };

@@ -18,5 +18,5 @@ import { UnsavedChangesProvider } from "./components/common/UnsavedChanges";
 import "./styles.css";
 import "./workspace.css";
 import "./features/business/business.css";
-const client = createGraphQLClient(import.meta.env.VITE_GRAPHQL_URL ?? "http://localhost:4000/graphql");
+const client = createGraphQLClient(import.meta.env.VITE_GRAPHQL_URL ?? "http://localhost:4000/graphql", "panel");
 ReactDOM.createRoot(document.getElementById("root")!).render(<React.StrictMode><ApolloProvider client={client}><ConfirmProvider><UnsavedChangesProvider><App/></UnsavedChangesProvider></ConfirmProvider></ApolloProvider></React.StrictMode>);

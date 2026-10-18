@@ -12,7 +12,7 @@ export const homeService = {
     const missing = active.filter((p) => !p.variants.some((v) => v.images.length) || !p.categories.length).map((p) => ({ id: String("id" in p ? p.id : p._id), title: p.title }));
     const orders = allowed.includes("orders.read") ? await orderService.list({ status: "PAYMENT_REVIEW" }, { limit: 5 }) : null;
     const unpaid = allowed.includes("orders.read") ? await orderService.list({ status: "PENDING_PAYMENT" }, { limit: 1 }) : null;
-    const purchases = allowed.includes("purchases.read") ? (await supplyService.purchases()).filter((p) => p.status === "ORDERED") : [];
+    const purchases = allowed.includes("purchases.read") ? await supplyService.inTransit() : [];
     const lots = allowed.includes("inventory.read") ? await supplyService.positions() : [];
     const cutoff = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
     const failures = allowed.includes("audit.read") ? await auditService.list({ status: "FAILED", from: new Date(Date.now() - 86400000).toISOString(), limit: 5 }) : null;

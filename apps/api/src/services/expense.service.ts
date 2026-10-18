@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { z } from "zod";
 import { operationContext, registerMemoryStore, unitOfWork } from "../lib/unitOfWork.js";
+import { usesMongo } from "../lib/persistence.js";
 
 export const expenseCategories = ["ADVERTISING", "PAYROLL", "TRANSPORT", "RENT", "UTILITIES", "FEES", "INVENTORY_LOSS", "OTHER"] as const;
 const today = () => new Date(Date.now() - 5 * 3600000).toISOString().slice(0, 10);
@@ -22,7 +23,7 @@ schema.index({ status: 1, date: -1 });
 export const ExpenseModel = (mongoose.models.Expense ?? mongoose.model("Expense", schema)) as mongoose.Model<mongoose.InferSchemaType<typeof schema>>;
 let memory: Expense[] = [];
 registerMemoryStore(() => memory, value => { memory = value; });
-const mongo = () => mongoose.connection.readyState === 1;
+const mongo = usesMongo;
 const normalize = (value: any): Expense => ({ ...value, id: String(value._id ?? value.id), createdAt: new Date(value.createdAt).toISOString(), updatedAt: new Date(value.updatedAt).toISOString() });
 const sameInput = (a: Expense, b: z.infer<typeof inputSchema>) => Object.entries(b).every(([key, value]) => a[key as keyof Expense] === value);
 

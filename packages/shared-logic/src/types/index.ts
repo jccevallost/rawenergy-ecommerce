@@ -201,10 +201,30 @@ export type OrderItem = {
 };
 /** Descuento de bienvenida aplicado a un pedido (C46). */
 export type OrderDiscount = { code: string; percent: number; amount: number };
+/** CU07: quién recibe y a nombre de quién se factura; `sameAsBuyer` en pedidos sin datos distintos. */
+export type OrderRecipient = { name: string; phone: string; sameAsBuyer: boolean; addressLabel?: string | null };
+export type OrderInvoice = { name: string; idType?: string | null; idNumber?: string | null; email: string; sameAsBuyer: boolean };
+/** CU09: pedido tal como lo ve su dueño. */
+export type CustomerOrderFilter = "ALL" | "ACTIVE" | "FINISHED" | "CANCELLED";
+export type CustomerOrder = {
+  orderNumber: string; createdAt: string; status: OrderStatus; paymentMethod: PaymentMethod; shippingMethod: ShippingMethod;
+  confirmedAt: string | null; paidAt: string | null; subtotal: number; shippingFee: number; total: number;
+  discount: { code: string; percent: number; amount: number } | null;
+  items: Array<{ variantSku: string; title: string; variantLabel: string; image: string | null; quantity: number; unitPrice: number; lineTotal: number; returnedQuantity: number }>;
+  delivery: { province: string; city: string; address: string; reference: string };
+  recipient: OrderRecipient; invoice: OrderInvoice;
+  events: Array<{ status: OrderStatus; at: string; note: string | null }>;
+  refund: { at: string; amount: number | null } | null;
+  cancellation: { canCancel: boolean; canRequestCancellation: boolean; reason: string | null; blocksAccount: boolean };
+  cancellationRequest: { status: "PENDING" | "APPROVED" | "REJECTED"; reason: string; createdAt: string; decidedAt: string | null; publicNote: string | null } | null;
+};
+export type CustomerOrderPage = { orders: CustomerOrder[]; hasMore: boolean; nextCursor: string | null };
 export type Order = {
   id: string;
   orderNumber: string;
   customer: OrderCustomer;
+  recipient?: OrderRecipient;
+  invoice?: OrderInvoice;
   items: OrderItem[];
   shippingMethod: ShippingMethod;
   paymentMethod: PaymentMethod;
@@ -224,7 +244,7 @@ export type Order = {
   updatedAt?: string | null;
 };
 
-export type UserRole = "CUSTOMER" | "CATALOG" | "WAREHOUSE" | "MANAGER" | "ADMIN";
+export type UserRole = "CUSTOMER" | "CATALOG" | "WAREHOUSE" | "MANAGER" | "STORE_MANAGER" | "ADMIN";
 export type UserStatus = "ACTIVE" | "BLOCKED";
 export type AuthUser = {
   id: string;
@@ -236,8 +256,18 @@ export type AuthUser = {
   lastLoginAt?: string | null;
   /** Verificación en dos pasos activa (C69, solo personal). */
   twoFactorEnabled?: boolean;
+  /** SEG-01: el personal debe activar el segundo factor antes de usar el panel. */
+  twoFactorRequired?: boolean;
+  /** CU04: el cliente confirmó su correo (el personal siempre true). */
+  emailVerified?: boolean;
 };
 export type AuthPayload = { token: string; user: AuthUser };
+/** CU04: alta, reenvío y cambio de correo responden igual exista o no la cuenta. */
+export type AccountRequestResult = { accepted: boolean; deliveryAvailable: boolean };
+/** CU03: perfil del cliente. `revision` se envía en cada escritura; `missing` dice qué falta para comprar sin escribir. */
+export type CustomerAddress = { id: string; label: string; province: string; city: string; address: string; reference: string; recipientName: string; recipientPhone: string; isDefault: boolean; createdAt: string; updatedAt: string };
+export type CustomerBilling = { name: string; idType: string; idNumber: string; email: string };
+export type CustomerProfile = { name: string; email: string; phone: string; altPhone: string; revision: number; firstPurchase?: boolean; maxAddresses: number; complete: boolean; missing: Array<"phone" | "billing" | "address">; defaultAddressId: string | null; billing: CustomerBilling | null; addresses: CustomerAddress[] };
 
 export type OrderConnection = { orders: Order[]; totalCount: number };
 
@@ -271,6 +301,8 @@ export type TaxonomyOverview = {
 export type CheckoutInfo = {
   /** Clave pública de Cloudflare Turnstile si la API exige comprobar que es una persona (C70). */
   captchaSiteKey?: string | null;
+  /** CLI-01: false mientras la tienda no ofrece cuentas de cliente; se compra y se consulta el pedido sin cuenta. */
+  customerAccounts?: boolean;
   /** null cuando la tienda da los datos de transferencia por WhatsApp. */
   bank?: { name: string; accountType: string; accountNumber: string; holder: string } | null;
   freeShippingThreshold: number;
@@ -295,6 +327,8 @@ export type CommerceSettings = {
   showBankDetails: boolean;
   /** Descuento de bienvenida con código (C46). */
   welcomeDiscount: { enabled: boolean; code: string; percent: number; minimumSubtotal: number; endsOn: string | null; showOnStore: boolean };
+  /** ROT-01: umbrales de antigüedad y poca salida. */
+  inventoryAging?: { targetMonths: number; prepareDays: number; priorityDays: number; windowDays: number; minHistoryDays: number };
   revision: number;
   updatedByName: string;
   updatedAt: string | null;

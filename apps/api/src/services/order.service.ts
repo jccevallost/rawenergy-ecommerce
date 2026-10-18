@@ -1,5 +1,6 @@
 import { unitOfWork, operationContext, registerMemoryStore } from "../lib/unitOfWork.js";
-import type { StockLot } from "./stockLedger.service.js";
+import { withLayer, type StockLot } from "./stockLedger.service.js";
+import { supplyService } from "./supply.service.js";
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { createHash, randomInt } from "node:crypto";
@@ -15,7 +16,16 @@ import { emailDomainService } from "./emailDomain.service.js";
 import { isExpressArea } from "../data/ecuador.js";
 import { productService } from "./product.service.js";
 import type { AuthUser } from "./auth.service.js";
+import { customerProfileService } from "./customerProfile.service.js";
+import { customerCancellation, ORDER_GROUPS } from "./customerOrders.js";
+import { blockedIdentities, blockedMessage } from "./blockedIdentities.js";
+import { cancellationStore } from "./cancellationRequests.store.js";
+import { authService } from "./auth.service.js";
+import { usesMongo } from "../lib/persistence.js";
+import { contentFingerprint } from "../lib/canonical.js";
+import { assertUniqueIndex } from "../lib/indexes.js";
 
+export type OrderReturn = { at: Date; reason: string; restocked: boolean; items: Array<{ productId: string; variantSku: string; title: string; quantity: number; allocations: StockLot[]; value: number }> };
 type OrderItem = {
   productId: string;
   variantSku: string;
@@ -31,11 +41,16 @@ type OrderItem = {
   discount?: number;
 };
 
+/** CU07: destinatario distinto del comprador y dirección guardada de origen. */
+export type OrderDelivery = { recipientName: string; recipientPhone: string; addressId: string | null; addressLabel: string };
+
 type MemoryOrder = {
   id: string;
   orderNumber: string;
   userId?: string | null;
   customer: CheckoutInput["customer"];
+  delivery?: OrderDelivery | null;
+  billing?: CheckoutInput["billing"] | null;
   items: OrderItem[];
   shippingMethod: CheckoutInput["shippingMethod"];
   paymentMethod: CheckoutInput["paymentMethod"];
@@ -56,6 +71,7 @@ type MemoryOrder = {
   requestFingerprint?: string;
   history?: Array<{ from: string; to: string; at: Date; actorId: string; reason: string }>;
   returnInfo?: { at: Date; reason: string; restocked: boolean } | null;
+  returns?: OrderReturn[];
   refund?: { at: Date; reason: string; reference: string; amount: number } | null;
 };
 
@@ -86,7 +102,7 @@ class OrderService {
   private memory: MemoryOrder[] = [];
   constructor() { registerMemoryStore(() => this.memory, (value) => { this.memory = value; }); }
   private get useMongo() {
-    return mongoose.connection.readyState === 1;
+    return usesMongo();
   }
 
   async create(rawInput: unknown, user?: AuthUser | null, options: { beforeNew?: () => Promise<void> } = {}): Promise<MemoryOrder | import("mongoose").HydratedDocument<import("../models/Order.js").OrderDocument>> {
@@ -94,16 +110,23 @@ class OrderService {
     const input = checkoutInputSchema.parse(rawInput);
     const { idempotencyKey, ...request } = input;
     const requestKey = idempotencyKey ? createHash("sha256").update(`${user?.id ?? "guest"}:${idempotencyKey}`).digest("hex") : undefined;
-    const requestFingerprint = createHash("sha256").update(JSON.stringify(request)).digest("hex");
+    // Huella canónica (M35): no depende del orden de las propiedades. Se acepta la huella anterior
+    // para que un reintento de un pedido creado antes de este cambio siga reconociéndose.
+    const requestFingerprint = contentFingerprint(request), legacyFingerprint = createHash("sha256").update(JSON.stringify(request)).digest("hex");
     if (requestKey) {
+      assertUniqueIndex("Order", "requestKey");
       const previous = this.useMongo ? await OrderModel.findOne({ requestKey }) : this.memory.find(o => o.requestKey === requestKey);
       if (previous) {
-        if (previous.requestFingerprint !== requestFingerprint) throw new Error("Este intento de compra ya se usó con otros datos. Revisa el pedido anterior antes de crear otro.");
+        if (previous.requestFingerprint !== requestFingerprint && previous.requestFingerprint !== legacyFingerprint) throw new Error("Este intento de compra ya se usó con otros datos. Revisa el pedido anterior antes de crear otro.");
         return previous;
       }
     }
     // Pedido nuevo (no es un reintento): comprobación de persona si está activa (C70).
     await options.beforeNew?.();
+    // CU11: identidad de una cuenta bloqueada por cancelaciones seguidas: tampoco compra como invitado.
+    if (await blockedIdentities.any(personKeys(input.customer))) throw new GraphQLError(blockedMessage, { extensions: { code: "ACCOUNT_BLOCKED" } });
+    // CU07: después de la huella. Un reintento con la misma clave ya devolvió su pedido aunque la libreta cambiara.
+    const delivery = await this.resolveDelivery(input, user);
     if (input.shippingMethod === "EXPRESS_QUITO_VALLES" && !isExpressArea(input.customer.province, input.customer.city)) {
       throw new Error("El envío express cubre Quito (con Cumbayá, Tumbaco y Conocoto) y Rumiñahui (Sangolquí). Para otra ciudad elige envío nacional.");
     }
@@ -174,6 +197,8 @@ class OrderService {
       orderNumber: orderNumber(),
       userId: user?.role === "CUSTOMER" ? user.id : null,
       customer: input.customer,
+      delivery,
+      billing: input.billing ?? null,
       items,
       shippingMethod: input.shippingMethod,
       paymentMethod: input.paymentMethod,
@@ -203,6 +228,30 @@ class OrderService {
     }
   }
 
+  /**
+   * CU07: entrega. Una dirección guardada se busca por id entre las del cliente con sesión y debe tener la versión
+   * que vio; su contenido guardado reemplaza la ubicación enviada, así que no se puede usar un id con otro texto.
+   * Respuesta igual para una dirección ajena o inexistente. El destinatario nunca cuenta para descuento ni límites:
+   * esas reglas usan solo al comprador (`customer`).
+   */
+  private async resolveDelivery(input: CheckoutInput, user?: AuthUser | null): Promise<OrderDelivery | null> {
+    const requested = input.delivery;
+    if (!requested) return null;
+    let { recipientName, recipientPhone } = requested;
+    let addressId: string | null = null, addressLabel = "";
+    if (requested.addressId) {
+      if (user?.role !== "CUSTOMER") throw new GraphQLError("Entra a tu cuenta para usar tus direcciones guardadas.", { extensions: { code: "FORBIDDEN" } });
+      const saved = (await customerProfileService.stored(user.id))?.addresses.find(address => address.id === requested.addressId);
+      if (!saved) throw new GraphQLError("Esa dirección ya no está en tu cuenta. Elige otra o escríbela.", { extensions: { code: "BAD_USER_INPUT", field: "deliveryAddressId" } });
+      const seen = Date.parse(requested.addressUpdatedAt ?? "");
+      if (Number.isNaN(seen) || seen !== Date.parse(saved.updatedAt)) throw new GraphQLError("Tu dirección cambió mientras comprabas. Revísala antes de confirmar; no se creó un pedido.", { extensions: { code: "CONFLICT", field: "deliveryAddressId" } });
+      Object.assign(input.customer, { province: saved.province, city: saved.city, address: saved.address, reference: saved.reference });
+      if (!recipientName && saved.recipientName) { recipientName = saved.recipientName; recipientPhone = saved.recipientPhone; }
+      addressId = saved.id; addressLabel = saved.label;
+    }
+    return recipientName || addressId ? { recipientName, recipientPhone, addressId, addressLabel } : null;
+  }
+
   /** Unión de productos (C49): las líneas del origen pasan al destino; el SKU no cambia. */
   async reassignProduct(sourceId: string, targetId: string) {
     if (this.useMongo) return (await OrderModel.updateMany({ "items.productId": sourceId }, { $set: { "items.$[line].productId": targetId } }, { arrayFilters: [{ "line.productId": sourceId }] })).modifiedCount;
@@ -222,6 +271,24 @@ class OrderService {
     const email = customer.email.trim().toLowerCase();
     if (this.useMongo) return Boolean(await OrderModel.exists({ status: { $ne: "CANCELLED" }, $or: [{ "customer.idNumber": customer.idNumber }, { "customer.phone": customer.phone }, { "customer.email": email }] }));
     return this.memory.some(order => order.status !== "CANCELLED" && (order.customer.idNumber === customer.idNumber || order.customer.phone === customer.phone || order.customer.email.toLowerCase() === email));
+  }
+
+  /**
+   * CUENTA-BIENVENIDA-01: ¿la persona con sesión ya compró? Misma regla que el descuento de bienvenida: un pedido
+   * no cancelado de la cuenta o de su correo, celular o documento, o el beneficio ya usado. Los datos vacíos no
+   * cuentan (un perfil sin cédula no debe coincidir con pedidos antiguos sin cédula).
+   */
+  async isReturningCustomer(userId: string, identity: { email: string; phone?: string; idNumber?: string }) {
+    const email = identity.email.trim().toLowerCase(), phone = identity.phone?.trim() ?? "", idNumber = identity.idNumber?.trim() ?? "";
+    const keys = [`email:${email}`, ...(phone ? [`phone:${phone}`] : []), ...(idNumber ? [`doc:${idNumber.toUpperCase()}`] : [])];
+    if (await redemptions.taken(keys)) return true;
+    if (this.useMongo) {
+      const or: Record<string, unknown>[] = [{ userId }, { "customer.email": email }];
+      if (phone) or.push({ "customer.phone": phone });
+      if (idNumber) or.push({ "customer.idNumber": idNumber });
+      return Boolean(await OrderModel.exists({ status: { $ne: "CANCELLED" }, $or: or }));
+    }
+    return this.memory.some(order => order.status !== "CANCELLED" && (order.userId === userId || order.customer.email.toLowerCase() === email || (phone && order.customer.phone === phone) || (idNumber && order.customer.idNumber === idNumber)));
   }
 
   private pushMemoryOrder(payload: Omit<MemoryOrder, "id" | "createdAt" | "updatedAt">) {
@@ -300,7 +367,10 @@ class OrderService {
           { orderNumber: pattern },
           { "customer.fullName": pattern },
           { "customer.email": pattern },
-          { "customer.phone": pattern }
+          { "customer.phone": pattern },
+          // CU07: también quien recibe, si no es el comprador.
+          { "delivery.recipientName": pattern },
+          { "delivery.recipientPhone": pattern }
         ];
       }
       const [orders, totalCount] = await Promise.all([
@@ -313,7 +383,7 @@ class OrderService {
     const search = filters.search?.toLocaleLowerCase();
     const filtered = this.memory.filter((order) =>
       (!filters.status || order.status === filters.status)
-      && (!search || `${order.orderNumber} ${order.customer.fullName} ${order.customer.email} ${order.customer.phone}`.toLocaleLowerCase().includes(search))
+      && (!search || `${order.orderNumber} ${order.customer.fullName} ${order.customer.email} ${order.customer.phone} ${order.delivery?.recipientName ?? ""} ${order.delivery?.recipientPhone ?? ""}`.toLocaleLowerCase().includes(search))
     );
     return { orders: filtered.slice(offset, offset + limit), totalCount: filtered.length };
   }
@@ -323,6 +393,47 @@ class OrderService {
    * por correo dejaria que cualquiera se registre con el correo de otro y vea
    * sus compras. Los pedidos hechos sin sesion se enlazan con linkGuestOrders.
    */
+  /**
+   * CU09: pedidos del cliente del más reciente al más antiguo, con cursor estable (createdAt + id): dos pedidos
+   * con la misma fecha no se omiten ni se repiten al pasar de página. Solo pedidos de `userId`.
+   */
+  async pageByUser(userId: string, raw: unknown) {
+    const args = z.object({ first: z.number().int().min(1).max(20).default(10), after: z.string().max(200).nullish(), filter: z.enum(["ALL", "ACTIVE", "FINISHED", "CANCELLED"]).default("ALL") }).parse(raw ?? {});
+    const badCursor = () => new GraphQLError("La lista cambió. Vuelve a cargar tus pedidos.", { extensions: { code: "BAD_USER_INPUT", field: "after" } });
+    let cursor: { t: string; i: string } | null = null;
+    if (args.after) {
+      try { cursor = z.object({ t: z.string().datetime(), i: z.string().min(1).max(64) }).parse(JSON.parse(Buffer.from(args.after, "base64url").toString("utf8"))); }
+      catch { throw badCursor(); }
+    }
+    const statuses = ORDER_GROUPS[args.filter];
+    const encode = (order: { createdAt?: Date | string; id?: unknown; _id?: unknown }) => Buffer.from(JSON.stringify({ t: new Date(order.createdAt!).toISOString(), i: String(order._id ?? order.id) })).toString("base64url");
+    let rows: Array<Record<string, any>>;
+    if (this.useMongo) {
+      if (cursor && !mongoose.isValidObjectId(cursor.i)) throw badCursor();
+      const at = cursor ? new Date(cursor.t) : null;
+      const query: Record<string, unknown> = { userId, ...(statuses ? { status: { $in: statuses } } : {}), ...(cursor ? { $or: [{ createdAt: { $lt: at } }, { createdAt: at, _id: { $lt: new mongoose.Types.ObjectId(cursor.i) } }] } : {}) };
+      rows = await OrderModel.find(query).sort({ createdAt: -1, _id: -1 }).limit(args.first + 1).lean();
+    } else {
+      const key = (order: { createdAt: Date; id: string }) => [new Date(order.createdAt).toISOString(), order.id] as const;
+      rows = this.memory
+        .filter(order => order.userId === userId && (!statuses || statuses.includes(order.status)))
+        .sort((a, b) => { const [ta, ia] = key(a), [tb, ib] = key(b); return tb.localeCompare(ta) || ib.localeCompare(ia); })
+        .filter(order => { if (!cursor) return true; const [t, i] = key(order); return t < cursor.t || (t === cursor.t && i < cursor.i); })
+        .slice(0, args.first + 1);
+    }
+    const hasMore = rows.length > args.first;
+    const page = rows.slice(0, args.first);
+    return { orders: page, hasMore, nextCursor: hasMore ? encode(page.at(-1)!) : null };
+  }
+
+  /** CU09: un pedido del cliente por número. Ajeno o inexistente: null, sin distinguir. */
+  async findOwned(userId: string, rawNumber: unknown) {
+    const number = z.string().trim().toUpperCase().regex(/^RE-\d{6}-[A-Z0-9]{3,10}$/).safeParse(rawNumber);
+    if (!number.success) return null;
+    const order = this.useMongo ? await OrderModel.findOne({ orderNumber: number.data, userId }).lean() : this.memory.find(o => o.orderNumber === number.data && o.userId === userId);
+    return order ?? null;
+  }
+
   async listByUser(userId: string, limit = 30) {
     const safeLimit = Math.min(Math.max(limit, 1), 100);
     if (this.useMongo) return OrderModel.find({ userId }).sort({ createdAt: -1 }).limit(safeLimit).lean();
@@ -370,7 +481,7 @@ class OrderService {
   }
 
   async forManagement(start: Date, end: Date) {
-    if (this.useMongo) return OrderModel.find({ $or: [{createdAt: { $gte: start, $lt: end }},{paidAt: { $gte: start, $lt: end }}], status: { $in: ["PAID", "PREPARING", "SHIPPED", "COMPLETED"] } }).select("createdAt paidAt status items shippingFee").lean();
+    if (this.useMongo) return OrderModel.find({ $or: [{createdAt: { $gte: start, $lt: end }},{paidAt: { $gte: start, $lt: end }}], status: { $in: ["PAID", "PREPARING", "SHIPPED", "COMPLETED"] } }).select("createdAt paidAt status items shippingFee returns").lean();
     return this.memory.filter((o) => o.createdAt >= start && o.createdAt < end || o.paidAt && o.paidAt >= start && o.paidAt < end);
   }
 
@@ -440,7 +551,7 @@ class OrderService {
    * `expectedStatus` exige que el pedido siga en ese estado al cambiarlo: el
    * vencimiento automático solo cancela lo que sigue sin pago en ese instante.
    */
-  async updateStatus(id: string, rawStatus: unknown, options: { reason?: string; expectedStatus?: OrderStatus; expectUnconfirmed?: boolean } = {}): Promise<unknown> {
+  async updateStatus(id: string, rawStatus: unknown, options: { reason?: string; expectedStatus?: OrderStatus; expectUnconfirmed?: boolean; expectNoProof?: boolean } = {}): Promise<unknown> {
     if (!operationContext.getStore()) return unitOfWork(() => this.updateStatus(id, rawStatus, options));
     const status = orderStatusSchema.parse(rawStatus);
     const current = await this.get(id);
@@ -448,6 +559,7 @@ class OrderService {
     if (options.expectedStatus && current.status !== options.expectedStatus) throw new Error("El pedido cambió de estado. Se omite.");
     if (current.status === status) return current;
     if (options.expectUnconfirmed && current.confirmedAt) throw new Error("El pedido ya fue confirmado. Se omite.");
+    if (options.expectNoProof && current.paymentReference?.trim()) throw new Error("El pedido ya tiene comprobante. Se omite.");
     if (!nextStatuses(current.status as OrderStatus, current.paymentMethod, current.confirmedAt).includes(status)) throw new Error("Cambio de estado no permitido. Los pedidos enviados o completados requieren registrar una devolución; los cancelados conservan su historial.");
     const items = current.items.map((item) => ({ productId: item.productId, variantSku: item.variantSku, quantity: item.quantity, allocations: (item as unknown as OrderItem).allocations }));
     const reserved = current.stockReserved !== false;
@@ -459,25 +571,107 @@ class OrderService {
     const history = [...(current.history ?? []), { from: current.status, to: status, at: new Date(), actorId: operationContext.getStore()!.actorId, reason: options.reason ?? (status === "CANCELLED" ? "Cancelación antes del despacho" : "Cambio de estado") }];
     let updated;
     if (this.useMongo) {
-      updated = await OrderModel.findOneAndUpdate({ _id: id, status: current.status, ...(options.expectUnconfirmed ? { confirmedAt: null } : {}) }, { $set: { status, stockReserved: status !== "CANCELLED", paidAt, items: nextItems, history, transitionId: null } }, { new: true }).lean();
+      updated = await OrderModel.findOneAndUpdate({ _id: id, status: current.status, ...(options.expectUnconfirmed ? { confirmedAt: null } : {}), ...(options.expectNoProof ? { paymentReference: { $in: ["", null] } } : {}) }, { $set: { status, stockReserved: status !== "CANCELLED", paidAt, items: nextItems, history, transitionId: null } }, { new: true }).lean();
       if (!updated) throw new Error("El pedido cambió. Recarga antes de continuar.");
     } else { Object.assign(current, { status, stockReserved: status !== "CANCELLED", paidAt, items: nextItems, history, updatedAt: new Date() }); updated = current; }
     if (hasStatusMail(status)) await notificationOutbox.enqueue([{ kind: "ORDER_STATUS_MAIL", orderId: id, status, label: `correo «${status}» del pedido ${current.orderNumber}` }], updated as MailOrder);
+    // CU12: cancelado por cualquier vía (equipo, vencimiento, cliente), su solicitud pendiente queda resuelta.
+    if (status === "CANCELLED") await cancellationStore.settlePending(id, "Tu pedido fue cancelado.");
+    // CU11: un pedido pagado o completado reinicia las cancelaciones seguidas de la cuenta (decisión del propietario).
+    if ((status === "PAID" || status === "COMPLETED") && current.userId) await authService.resetCustomerCancellations(current.userId);
     return updated;
   }
 
+  /**
+   * CU11: cancelación directa del cliente (política del propietario, plan §8). En una transacción: comprueba dueño
+   * y política con el estado actual, cancela con `updateStatus` (libera stock y descuento) condicionado a que siga
+   * sin confirmar y sin comprobante, suma la cancelación y, si llega al límite, bloquea la cuenta y sus identidades
+   * y avisa al operador. Un pedido ya cancelado devuelve un resultado estable sin otro movimiento.
+   */
+  async cancelByCustomer(user: AuthUser, rawNumber: unknown): Promise<{ order: unknown; alreadyCancelled: boolean; accountBlocked: boolean }> {
+    if (!operationContext.getStore()) return unitOfWork(() => this.cancelByCustomer(user, rawNumber), { actorId: user.id, reason: "Cancelado por el cliente" });
+    const order = await this.findOwned(user.id, rawNumber) as (MemoryOrder & { _id?: unknown }) | null;
+    if (!order) throw new GraphQLError("No encontramos ese pedido en tu cuenta.", { extensions: { code: "BAD_USER_INPUT", field: "number" } });
+    if (order.status === "CANCELLED") return { order, alreadyCancelled: true, accountBlocked: false };
+    const policy = customerCancellation(order);
+    if (!policy.canCancel) throw new GraphQLError(policy.reason ?? "Este pedido ya no se puede cancelar desde tu cuenta.", { extensions: { code: "NOT_CANCELLABLE" } });
+    const id = String(order._id ?? order.id);
+    let updated: unknown;
+    try {
+      updated = await this.updateStatus(id, "CANCELLED", { reason: "Cancelado por el cliente", expectedStatus: "PENDING_PAYMENT", expectUnconfirmed: true, expectNoProof: true });
+    } catch {
+      // Otra operación ganó (confirmación, comprobante, pago o vencimiento): se responde con el estado nuevo.
+      throw new GraphQLError("Tu pedido cambió mientras lo cancelabas. Revisa su estado actual.", { extensions: { code: "CONFLICT" } });
+    }
+    const { blocked } = await authService.recordCustomerCancellation(user.id);
+    if (blocked) {
+      const own = this.useMongo ? await OrderModel.find({ userId: user.id }).select("customer").lean() : this.memory.filter(o => o.userId === user.id);
+      const profile = await customerProfileService.stored(user.id);
+      const keys = [`email:${user.email.trim().toLowerCase()}`, ...(profile?.phone ? [`phone:${profile.phone}`] : []), ...(profile?.altPhone ? [`phone:${profile.altPhone}`] : []), ...(profile?.billing?.idNumber ? [`doc:${profile.billing.idNumber.toUpperCase()}`] : []), ...own.flatMap(o => personKeys(o.customer as { idNumber: string; phone: string; email: string }))];
+      await blockedIdentities.add(user.id, keys);
+      await notificationOutbox.enqueue([{ kind: "OPERATOR_NOTICE", label: `aviso de cuenta bloqueada ${user.email}`, text: `Cuenta de cliente bloqueada por cancelaciones seguidas: ${user.email} (último pedido ${order.orderNumber}). Revísala y desbloquéala desde el panel si corresponde.` }]);
+    }
+    return { order: updated, alreadyCancelled: false, accountBlocked: blocked };
+  }
+
+  /**
+   * Devolución recibida (M43). Sin `items` se devuelve todo lo pendiente, como antes; con `items` se devuelven
+   * solo esas unidades. Al reponer, cada unidad vuelve a la capa de la que salió (fecha, costo y compra de
+   * origen intactos), empezando por las últimas asignadas. El pedido pasa a RETURNED solo cuando vuelven todas.
+   */
   async recordReturn(id: string, raw: unknown): Promise<unknown> {
     if (!operationContext.getStore()) return unitOfWork(() => this.recordReturn(id, raw));
-    const input = z.object({ reason: z.string().trim().min(5).max(300), restock: z.boolean() }).strict().parse(raw);
+    const input = z.object({
+      reason: z.string().trim().min(5).max(300), restock: z.boolean(),
+      items: z.array(z.object({ variantSku: z.string().min(1).max(80), quantity: z.number().int().min(1).max(100000) }).strict()).min(1).max(60).optional(),
+      expectedReturns: z.number().int().min(0).max(1000).optional()
+    }).strict().parse(raw);
     const current = await this.get(id);
     if (!current) throw new Error("Pedido no encontrado");
     if (current.returnInfo) return current;
     if (!["SHIPPED", "COMPLETED"].includes(current.status)) throw new Error("Solo se registra devolución de pedidos enviados o completados.");
-    if (input.restock) await productService.releaseStock(current.items as unknown as OrderItem[], `Devolución recibida: ${input.reason}`);
+    const previous = ((current as { returns?: OrderReturn[] }).returns ?? []) as OrderReturn[];
+    if (input.expectedReturns !== undefined && input.expectedReturns !== previous.length) throw new Error("Se registró otra devolución de este pedido. Recarga antes de continuar.");
+    const items = current.items as unknown as OrderItem[];
+    const returned = (sku: string) => previous.reduce((s, r) => s + r.items.filter(i => i.variantSku === sku).reduce((n, i) => n + i.quantity, 0), 0);
+    const requested = input.items ?? items.map(i => ({ variantSku: i.variantSku, quantity: i.quantity - returned(i.variantSku) })).filter(i => i.quantity > 0);
+    if (!requested.length) throw new Error("No quedan unidades por devolver en este pedido.");
+    const warehouses = await supplyService.warehouses();
     const at = new Date();
-    const patch = { status: "RETURNED" as const, stockReserved: false, returnInfo: { at, reason: input.reason, restocked: input.restock }, history: [...(current.history ?? []), { from: current.status, to: "RETURNED", at, actorId: operationContext.getStore()!.actorId, reason: input.reason }] };
+    const entryItems: OrderReturn["items"] = [];
+    for (const want of requested) {
+      const item = items.find(i => i.variantSku === want.variantSku);
+      if (!item) throw new Error(`El pedido no tiene la presentación ${want.variantSku}.`);
+      const pending = item.quantity - returned(item.variantSku);
+      if (want.quantity > pending) throw new Error(`${item.title}: solo quedan ${pending} unidades por devolver.`);
+      // Capas a las que vuelven las unidades: las asignadas al pedido, de la última a la primera, sin repetir lo ya devuelto.
+      const allocations = (item.allocations?.length ? item.allocations : [{ warehouseId: "main", lot: "INICIAL", expiresOn: "", unitCost: null, quantity: item.quantity }]).map(a => withLayer(a));
+      const usedByLayer = new Map<string, number>();
+      for (const r of previous) for (const i of r.items) if (i.variantSku === item.variantSku) for (const a of i.allocations) usedByLayer.set(`${a.warehouseId}:${withLayer(a).layerId}`, (usedByLayer.get(`${a.warehouseId}:${withLayer(a).layerId}`) ?? 0) + a.quantity);
+      let need = want.quantity; const lots: StockLot[] = [];
+      for (const alloc of [...allocations].reverse()) {
+        const k = `${alloc.warehouseId}:${alloc.layerId}`, free = alloc.quantity - (usedByLayer.get(k) ?? 0), take = Math.min(free, need);
+        if (take > 0) { lots.push({ ...alloc, quantity: take }); need -= take; }
+        if (!need) break;
+      }
+      if (input.restock && lots.length) {
+        const rerouted = lots.map(l => ({ ...l, warehouseId: warehouses.some(w => w.id === l.warehouseId && w.active) ? l.warehouseId : "main" }));
+        await productService.changeStock(item.productId, item.variantSku, want.quantity, { exactLots: rerouted, reason: `Devolución recibida (${current.orderNumber}): ${input.reason}${rerouted.some((l, i) => l.warehouseId !== lots[i]!.warehouseId) ? "; destino principal por bodega archivada" : ""}` });
+      }
+      const net = Math.round((item.lineTotal - (item.discount ?? 0)) * 100) / 100;
+      entryItems.push({ productId: item.productId, variantSku: item.variantSku, title: item.title, quantity: want.quantity, allocations: lots, value: Math.round(net * want.quantity / item.quantity * 100) / 100 });
+    }
+    const entry: OrderReturn = { at, reason: input.reason, restocked: input.restock, items: entryItems };
+    const all = [...previous, entry];
+    const complete = items.every(i => i.quantity === all.reduce((s, r) => s + r.items.filter(x => x.variantSku === i.variantSku).reduce((n, x) => n + x.quantity, 0), 0));
+    const actorId = operationContext.getStore()!.actorId;
+    const patch = {
+      returns: all,
+      history: [...(current.history ?? []), { from: current.status, to: complete ? "RETURNED" : current.status, at, actorId, reason: complete ? input.reason : `Devolución parcial (${entryItems.map(i => `${i.quantity} × ${i.title}`).join(", ")}): ${input.reason}` }],
+      ...(complete ? { status: "RETURNED" as const, stockReserved: false, returnInfo: { at, reason: input.reason, restocked: input.restock } } : {})
+    };
     if (this.useMongo) {
-      const result = await OrderModel.findOneAndUpdate({ _id: id, status: current.status }, { $set: patch }, { new: true }).lean();
+      const result = await OrderModel.findOneAndUpdate({ _id: id, status: current.status, $or: [{ returns: { $size: previous.length } }, ...(previous.length ? [] : [{ returns: { $exists: false } }])] }, { $set: patch }, { new: true }).lean();
       if (!result) throw new Error("El pedido cambió. Recarga antes de continuar.");
       return result;
     }

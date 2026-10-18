@@ -16,7 +16,7 @@ const orderCustomerSchema = new Schema({
 }, { _id: false });
 
 const orderItemSchema = new Schema({
-  allocations: { type: [{ warehouseId: String, lot: String, expiresOn: String, quantity: Number, unitCost: { type: Number, default: null }, _id: false }], default: [] },
+  allocations: { type: [{ warehouseId: String, lot: String, expiresOn: String, quantity: Number, unitCost: { type: Number, default: null }, layerId: String, receivedOn: String, source: String, purchaseId: String, purchaseLine: Number, _id: false }], default: [] },
   unitCost: { type: Number, default: null },
   categories: { type: [{ name: String, slug: String, _id: false }], default: undefined },
   productId: { type: String, required: true },
@@ -36,10 +36,16 @@ const orderSchema = new Schema({
   requestFingerprint: String,
   history: { type: [{ from: String, to: String, at: Date, actorId: String, reason: String, _id: false }], default: [] },
   returnInfo: { type: new Schema({ at: Date, reason: String, restocked: Boolean }, { _id: false }), default: null },
+  // M43: devoluciones parciales, cada una con sus unidades, capas de origen y valor devuelto.
+  returns: { type: [Schema.Types.Mixed], default: [] },
   refund: { type: new Schema({ at: Date, reason: String, reference: String, amount: Number }, { _id: false }), default: null },
   orderNumber: { type: String, required: true, unique: true, index: true },
   userId: { type: String, default: null },
   customer: { type: orderCustomerSchema, required: true },
+  // CU07: quien recibe si no es el comprador, y la dirección guardada de la que salió (copia: editar o borrar
+  // la libreta no cambia el pedido). Factura a nombre distinto del comprador. null = el comprador.
+  delivery: { type: new Schema({ recipientName: String, recipientPhone: String, addressId: String, addressLabel: String }, { _id: false }), default: null },
+  billing: { type: new Schema({ name: String, idType: String, idNumber: String, email: String }, { _id: false }), default: null },
   items: { type: [orderItemSchema], required: true, validate: [(value: unknown[]) => value.length > 0, "La orden necesita productos"] },
   shippingMethod: { type: String, enum: ["EXPRESS_QUITO_VALLES", "SERVIENTREGA_NATIONAL"], required: true },
   paymentMethod: { type: String, enum: ["BANK_TRANSFER", "CASH_ON_DELIVERY"], default: "BANK_TRANSFER" },
@@ -68,6 +74,9 @@ const orderSchema = new Schema({
 
 orderSchema.index({ createdAt: -1, status: 1 });
 orderSchema.index({ requestKey: 1 }, { unique: true, sparse: true });
+// CU09: «Mis pedidos» paginado por cursor (createdAt + _id) de cada cliente; los invitados (userId null) no entran.
+// El filtro es un rango para que el planificador lo deduzca de una igualdad `userId: "<id>"`.
+orderSchema.index({ userId: 1, createdAt: -1, _id: -1 }, { partialFilterExpression: { userId: { $gt: "" } } });
 // Pedidos por persona: descuento de primera compra y tope de pendientes (C60, S04).
 orderSchema.index({ "customer.idNumber": 1, status: 1 });
 orderSchema.index({ "customer.phone": 1, status: 1 });

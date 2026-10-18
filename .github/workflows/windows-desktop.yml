@@ -1,0 +1,32 @@
+# WIN-01: compila el instalador de Windows del panel en un Windows real. Solo se ejecuta a mano
+# (Actions → «Programa de Windows» → Run workflow); no publica nada: deja el .exe como artefacto.
+name: Programa de Windows
+on:
+  workflow_dispatch:
+    inputs:
+      panel_url:
+        description: Dirección https del panel publicado
+        required: true
+        default: https://icy-meadow-0e332cb10.1.azurestaticapps.net
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - run: npm ci
+      - run: npm run build:windows -w @vital-forge/desktop
+        env:
+          RAWENERGY_PANEL_URL: ${{ inputs.panel_url }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rawenergy-gestion-windows
+          path: apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
+          retention-days: 14

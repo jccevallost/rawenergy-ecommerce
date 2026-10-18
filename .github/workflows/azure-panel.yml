@@ -2,7 +2,7 @@
 # Configuración en GitHub (Settings → Secrets and variables → Actions):
 #   secreto  AZURE_STATIC_WEB_APPS_API_TOKEN_ICY_MEADOW_0E332CB10
 #            token de despliegue del panel; lo creó Azure al enlazar el recurso icy-meadow-0e332cb10 con GitHub
-#   variable VITE_GRAPHQL_URL                        https://<api-en-render>/graphql
+#   variable VITE_GRAPHQL_URL                        https://rawenergy-api-prod.azurewebsites.net/graphql
 #   variable VITE_WEB_URL                            https://<tienda-en-azure>
 # Pasos completos en docs/despliegue-web.md.
 name: Panel en Azure

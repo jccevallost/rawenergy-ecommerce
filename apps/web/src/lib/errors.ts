@@ -16,3 +16,21 @@ export function friendlyError(error: unknown, fallback: string) {
   }
   return error instanceof Error && error.message ? error.message : fallback;
 }
+
+/**
+ * CU06: errores por campo de la API. Los propios llevan `extensions.field`; los de validación, la lista de
+ * `issues` con la ruta del campo. Se usa el primer mensaje de cada campo.
+ */
+export function fieldErrorsOf(error: unknown): Record<string, string> {
+  const found: Record<string, string> = {};
+  if (!(error instanceof ApolloError)) return found;
+  for (const issue of error.graphQLErrors) {
+    const field = issue.extensions?.field;
+    if (typeof field === "string") found[field] ??= issue.message;
+    const issues = issue.extensions?.issues as Array<{ path?: Array<string | number>; message?: string }> | undefined;
+    for (const item of issues ?? []) { const key = String(item.path?.at(-1) ?? ""); if (key && item.message) found[key] ??= item.message; }
+  }
+  return found;
+}
+
+export const isConflict = (error: unknown) => error instanceof ApolloError && error.graphQLErrors.some(issue => issue.extensions?.code === "CONFLICT");

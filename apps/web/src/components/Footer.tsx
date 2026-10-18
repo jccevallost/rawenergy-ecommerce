@@ -6,7 +6,7 @@ import { goals } from "../lib/goals";
 import { Link } from "../lib/router";
 import { formatWhatsapp, whatsappHref } from "../lib/whatsapp";
 
-export function Footer({ onOrders }: { onOrders: () => void }) {
+export function Footer({ onOrders, accounts = false }: { onOrders: () => void; accounts?: boolean }) {
   const { toggleCart } = useCartOrchestrator();
   const { data } = useQuery<{ checkoutInfo: CheckoutInfo }>(CHECKOUT_INFO);
   const whatsapp = data?.checkoutInfo.whatsapp;
@@ -28,7 +28,7 @@ export function Footer({ onOrders }: { onOrders: () => void }) {
           <h2>Ayuda</h2>
           <ul>
             <li><Link to="/pedido">Consultar mi pedido</Link></li>
-            <li><button type="button" className="footer-link" onClick={onOrders}>Mis pedidos con cuenta</button></li>
+            {accounts && <li><button type="button" className="footer-link" onClick={onOrders}>Mis pedidos con cuenta</button></li>}
             <li><button type="button" className="footer-link" onClick={() => toggleCart(true)}>Ver mi carrito</button></li>
             {whatsapp && <li><a href={whatsappHref(whatsapp, "Hola RawEnergy, tengo una consulta.")} rel="noopener noreferrer" target="_blank">WhatsApp {formatWhatsapp(whatsapp)}</a></li>}
           </ul>

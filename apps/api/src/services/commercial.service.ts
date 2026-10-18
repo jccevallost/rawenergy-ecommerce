@@ -14,7 +14,7 @@ export function stockSummary(positions: Position[], now = new Date()) {
 }
 export const commercialService = {
   async overview() {
-    const [orders, positions, purchases, suppliers] = await Promise.all([orderService.pendingSummary(), supplyService.positions(), supplyService.purchases("ORDERED"), supplyService.suppliers()]);
+    const [orders, positions, purchases, suppliers] = await Promise.all([orderService.pendingSummary(), supplyService.positions(), supplyService.inTransit(), supplyService.suppliers()]);
     const now = new Date(), today = new Date(now.getTime() - 5 * 3600000).toISOString().slice(0, 10);
     return { orders, stock: stockSummary(positions, now), purchases: { count: purchases.length, amount: Math.round(purchases.reduce((s, p) => s + p.total, 0) * 100) / 100, overdue: purchases.filter(p => p.expectedOn && p.expectedOn < today).length, rows: purchases.map(p => ({ id: p.id, number: p.number, total: p.total, expectedOn: p.expectedOn, supplier: suppliers.find(s => s.id === p.supplierId)?.name ?? "Proveedor sin nombre" })).sort((a, b) => (a.expectedOn || "9999").localeCompare(b.expectedOn || "9999")).slice(0, 5) }, updatedAt: now.toISOString() };
   }

@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import mongoose from "mongoose";
+import { usesMongo } from "./persistence.js";
 
 mongoose.set("transactionAsyncLocalStorage", true);
 type Context = { actorId: string; requestId: string; reason: string; afterCommit: Array<() => void> };
@@ -12,7 +13,9 @@ export function afterCommit(work: () => void) { const context = operationContext
 export async function unitOfWork<T>(work: () => Promise<T>, metadata: Partial<Omit<Context, "afterCommit">> = {}): Promise<T> {
   if (operationContext.getStore()) return work();
   const context: Context = { actorId: metadata.actorId ?? "system", requestId: metadata.requestId ?? crypto.randomUUID(), reason: metadata.reason ?? "Operación del sistema", afterCommit: [] };
-  if (mongoose.connection.readyState === 1) {
+  // El modo se fijó al conectar (D03): con MongoDB siempre hay transacción. Si la conexión se
+  // cortó, `transaction` espera a que vuelva y, si no vuelve a tiempo, falla sin escribir.
+  if (usesMongo()) {
     for (let attempt = 0; ; attempt++) {
       try {
         const result = await mongoose.connection.transaction(async () => {
@@ -24,8 +27,10 @@ export async function unitOfWork<T>(work: () => Promise<T>, metadata: Partial<Om
       } catch (error) {
         // A concurrent checkout can win the unique request key. Read its
         // committed result in a fresh transaction; never retry an aborted one.
-        const conflict = error as { code?: number; keyPattern?: { requestKey?: number } };
-        if (attempt >= 2 || conflict.code !== 11000 || !conflict.keyPattern?.requestKey) throw error;
+        // M05: lo mismo con la identidad de una factura: el reintento encuentra la compra ya
+        // registrada y responde con un mensaje de negocio en lugar del error del índice.
+        const conflict = error as { code?: number; keyPattern?: { requestKey?: number; documentKey?: number } };
+        if (attempt >= 2 || conflict.code !== 11000 || !(conflict.keyPattern?.requestKey || conflict.keyPattern?.documentKey)) throw error;
       }
     }
   }

@@ -19,6 +19,11 @@ export const operationRules = {
   loginFailures: { limit: 30, windowMs: 15 * 60_000, message: "Demasiados intentos fallidos para esta cuenta desde conexiones nuevas." },
   register: { limit: 5, windowMs: 60 * 60_000, message: "Demasiados registros desde esta conexión." },
   passwordReset: { limit: 5, windowMs: 15 * 60_000, message: "Demasiadas solicitudes de recuperación desde esta conexión." },
+  // CU04: confirmación y reenvío del enlace de correo, por conexión; cambio de correo, por cuenta.
+  emailVerification: { limit: 10, windowMs: 15 * 60_000, message: "Demasiadas solicitudes de confirmación de correo desde esta conexión." },
+  emailChange: { limit: 5, windowMs: 15 * 60_000, message: "Demasiadas solicitudes de cambio de correo. Espera unos minutos." },
+  // CU11: cancelaciones y solicitudes de cancelación, por cuenta.
+  orderCancel: { limit: 10, windowMs: 15 * 60_000, message: "Demasiados intentos de cancelación seguidos. Espera unos minutos." },
   checkout: { limit: 12, windowMs: 10 * 60_000, message: "Demasiados pedidos seguidos desde esta conexión." },
   cartTotals: { limit: 90, windowMs: 60_000, message: "Demasiadas consultas de total seguidas." },
   orderLookup: { limit: 20, windowMs: 15 * 60_000, message: "Demasiadas consultas de pedidos desde esta conexión." },

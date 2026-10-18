@@ -8,6 +8,9 @@ type MailOrder = {
   orderNumber: string;
   paymentMethod?: "BANK_TRANSFER" | "CASH_ON_DELIVERY";
   customer: { fullName: string; email: string; phone: string; province: string; city: string; address: string; reference?: string | null; idType?: string | null; idNumber?: string | null };
+  // CU07: destinatario y factura distintos del comprador (opcionales).
+  delivery?: { recipientName?: string | null; recipientPhone?: string | null } | null;
+  billing?: { name: string; idType?: string | null; idNumber?: string | null; email?: string | null } | null;
   items: Array<{ title: string; variantLabel: string; quantity: number; unitPrice: number; lineTotal: number }>;
   shippingMethod: "EXPRESS_QUITO_VALLES" | "SERVIENTREGA_NATIONAL";
   subtotal: number;
@@ -107,16 +110,66 @@ const bankBlock = (bank: CommerceSettings["bank"]) => {
     </div>`;
 };
 
+/** Mensaje retenido en el buzón simulado (CU02). Solo vive en memoria del proceso. */
+export type SimulatedMail = { id: number; to: string; subject: string; html: string; createdAt: string };
+// Acotado para que un uso prolongado del piloto no haga crecer la memoria sin límite.
+const SIMULATED_MAILBOX_LIMIT = 200;
+
 class MailService {
+  private simulated: SimulatedMail[] = [];
+  private simulatedSeq = 0;
+
+  get simulatedMode() {
+    return env.MAIL_MODE === "simulated";
+  }
+
+  /**
+   * Buzón de prueba, del más reciente al más antiguo. Solo en modo simulado: los enlaces de verificación
+   * y recuperación se leen aquí y nunca en los logs.
+   */
+  simulatedMailbox(to?: string) {
+    if (!this.simulatedMode) throw new Error("El buzón de prueba solo existe con MAIL_MODE=simulated");
+    const target = to?.trim().toLowerCase();
+    return this.simulated.filter(mail => !target || mail.to === target).slice().reverse();
+  }
+
+  clearSimulatedMailbox() {
+    this.simulated = [];
+  }
+
   async sendPasswordReset(to: string, url: string) {
     return this.send(to, "Restablecer contraseña", layout("Restablecer contraseña", `<p>Este enlace vence en 30 minutos y funciona una sola vez.</p><p><a href="${escape(url)}">Crear nueva contraseña</a></p><p>Si no solicitaste el cambio, puedes ignorar este mensaje.</p>`, "Acceso a tu cuenta"));
+  }
+
+  // CU04: correos de la cuenta del cliente. Los enlaces llevan el token en el fragmento (#): no viaja al
+  // servidor de la tienda ni en el Referer.
+  async sendEmailVerification(to: string, url: string) {
+    return this.send(to, "Confirma tu correo", layout("Confirma tu correo", `<p>Para activar tu cuenta, confirma que este correo es tuyo. El enlace vence en 24 horas y funciona una sola vez.</p><p><a href="${escape(url)}">Confirmar mi correo</a></p><p>Si no creaste una cuenta, puedes ignorar este mensaje.</p>`, "Acceso a tu cuenta"));
+  }
+
+  /** Alta o cambio hacia un correo que ya tiene cuenta: se avisa al titular en vez de revelarlo a quien lo pide (D05). */
+  async sendAccountExists(to: string, storeUrl: string) {
+    return this.send(to, "Ya tienes una cuenta", layout("Ya tienes una cuenta", `<p>Alguien intentó usar este correo para una cuenta nueva o para un cambio de correo, pero ya está registrado. Si fuiste tú, entra con tu contraseña${storeUrl ? ` en <a href="${escape(storeUrl)}">la tienda</a>` : ""} o usa «Olvidé mi contraseña».</p><p>Si no fuiste tú, no necesitas hacer nada: tu cuenta no cambió.</p>`, "Acceso a tu cuenta"));
+  }
+
+  async sendEmailChange(to: string, url: string) {
+    return this.send(to, "Confirma tu nuevo correo", layout("Confirma tu nuevo correo", `<p>Pediste usar este correo para entrar a tu cuenta. El enlace vence en 1 hora y funciona una sola vez; hasta confirmarlo seguimos usando tu correo anterior.</p><p><a href="${escape(url)}">Confirmar el cambio</a></p><p>Si no lo pediste, ignora este mensaje.</p>`, "Acceso a tu cuenta"));
+  }
+
+  /** Aviso al correo vigente: el cambio aún no se aplica. Solo muestra el nuevo correo enmascarado. */
+  async sendEmailChangeRequested(to: string, maskedNew: string) {
+    return this.send(to, "Solicitud de cambio de correo", layout("Solicitud de cambio de correo", `<p>Se pidió cambiar el correo de tu cuenta a <strong>${escape(maskedNew)}</strong>. Tu correo no cambia hasta que se confirme desde la nueva dirección.</p><p>Si no fuiste tú, cambia tu contraseña y cierra las sesiones abiertas desde «Mi cuenta».</p>`, "Acceso a tu cuenta"));
+  }
+
+  async sendEmailChanged(to: string, maskedNew: string) {
+    return this.send(to, "Tu correo de acceso cambió", layout("Tu correo de acceso cambió", `<p>Desde ahora entras a tu cuenta con <strong>${escape(maskedNew)}</strong>. Cerramos las sesiones abiertas.</p><p>Si no fuiste tú, escríbenos de inmediato.</p>`, "Acceso a tu cuenta"));
   }
 
   private transporter: Transporter | null = null;
 
   /** Sin credenciales SMTP la tienda sigue funcionando: los envios solo se anotan. */
   get enabled() {
-    return Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASSWORD && env.mailFrom);
+    return this.simulatedMode || Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASSWORD && env.mailFrom);
   }
 
   private get client() {
@@ -140,6 +193,13 @@ class MailService {
    * correo este caido, asi que el fallo se registra y la compra sigue.
    */
   private async send(to: string, subject: string, html: string) {
+    if (this.simulatedMode) {
+      this.simulated.push({ id: ++this.simulatedSeq, to: to.trim().toLowerCase(), subject, html, createdAt: new Date().toISOString() });
+      if (this.simulated.length > SIMULATED_MAILBOX_LIMIT) this.simulated.splice(0, this.simulated.length - SIMULATED_MAILBOX_LIMIT);
+      // Solo el asunto: el cuerpo puede llevar enlaces de un solo uso.
+      console.info(`[mail] simulado: "${subject}" retenido en el buzón de prueba`);
+      return true;
+    }
     if (!this.enabled) {
       console.info(`[mail] sin configurar; no se envio "${subject}" a ${to}`);
       return false;
@@ -173,7 +233,7 @@ class MailService {
       ${payment}
       <p style="margin:14px 0 0;font-size:12px;color:#7a817b;line-height:1.6">
         ${escape(shippingLabels[order.shippingMethod])}.<br>
-        Entrega en ${escape(order.customer.address)}, ${escape(order.customer.city)}.
+        Entrega en ${escape(order.customer.address)}, ${escape(order.customer.city)}.${order.delivery?.recipientName ? `<br>Recibe ${escape(order.delivery.recipientName)}.` : ""}
       </p>`);
     return this.send(order.customer.email, `Pedido ${order.orderNumber} recibido`, html);
   }
@@ -186,7 +246,10 @@ class MailService {
         ${escape(order.customer.email)} · ${escape(order.customer.phone)}<br>
         ${escape(order.customer.address)}, ${escape(order.customer.city)}, ${escape(order.customer.province)}
         ${order.customer.reference ? `<br>Referencia: ${escape(order.customer.reference)}` : ""}
-        ${order.customer.idNumber ? `<br>Factura: ${idTypeLabel((order.customer.idType || "CEDULA") as IdType)} ${escape(order.customer.idNumber)}` : ""}
+        ${order.delivery?.recipientName ? `<br><strong>Recibe:</strong> ${escape(order.delivery.recipientName)} · ${escape(order.delivery.recipientPhone ?? "")}` : ""}
+        ${order.billing?.idNumber
+          ? `<br>Factura a nombre de ${escape(order.billing.name)}: ${idTypeLabel((order.billing.idType || "CEDULA") as IdType)} ${escape(order.billing.idNumber)}${order.billing.email ? ` · ${escape(order.billing.email)}` : ""}`
+          : order.customer.idNumber ? `<br>Factura: ${idTypeLabel((order.customer.idType || "CEDULA") as IdType)} ${escape(order.customer.idNumber)}` : ""}
       </p>
       ${itemsTable(order)}
       <p style="margin:0;font-size:13px;line-height:1.6">

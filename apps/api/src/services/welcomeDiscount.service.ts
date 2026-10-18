@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { registerMemoryStore } from "../lib/unitOfWork.js";
 import type { CommerceSettings } from "./commerceSettings.service.js";
+import { usesMongo } from "../lib/persistence.js";
 
 // Descuento de bienvenida (C46). El código se evalúa en el carrito sin mirar quién
 // compra (no se revela si una cédula ya compró); al crear el pedido se exige que
@@ -14,7 +15,7 @@ export const RedemptionModel = (mongoose.models.DiscountRedemption ?? mongoose.m
 type Redemption = { _id: string; code: string; orderId: string; orderNumber: string };
 let memory: Redemption[] = [];
 registerMemoryStore(() => memory, value => { memory = value; });
-const mongo = () => mongoose.connection.readyState === 1;
+const mongo = usesMongo;
 const ecuadorToday = () => new Date(Date.now() - 5 * 3600000).toISOString().slice(0, 10);
 const round = (value: number) => Math.round(value * 100) / 100;
 

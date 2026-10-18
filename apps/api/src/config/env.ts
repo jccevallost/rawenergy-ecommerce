@@ -14,12 +14,21 @@ export const envSchema = z.object({
   ORDER_RESERVATION_HOURS: z.coerce.number().int().min(1).max(168).default(24),
   // Peticiones GraphQL por minuto y por IP antes de responder 429.
   GRAPHQL_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(10).max(10000).default(120),
-  // Cabecera con la IP real del visitante que pone el proxy de confianza (en Render,
+  // Cabecera con la IP real del visitante que pone el proxy de confianza (antes en Render,
   // Cloudflare: cf-connecting-ip). Sin ella se usa req.ip con `trust proxy` (C60, S02).
   // Solo se define si el proxy sobrescribe la cabecera: si el cliente pudiera enviarla, la falsificaría.
   CLIENT_IP_HEADER: z.string().regex(/^[a-z0-9-]+$/i).optional(),
   // Días que se conserva la bitácora de auditoría (contiene datos personales; LOPDP).
   AUDIT_RETENTION_DAYS: z.coerce.number().int().min(30).max(3650).default(365),
+  // Cuentas de clientes en la tienda (CLI-01). Decisión del propietario del 14/10/2026: retiradas por
+  // ahora; se compra y se consulta el pedido sin cuenta. «on» las reactiva sin borrar ni migrar datos.
+  // En las pruebas automáticas quedan activas porque ejercitan esas funciones conservadas.
+  CUSTOMER_ACCOUNTS: z.enum(["on", "off"]).default(process.env.NODE_ENV === "test" ? "on" : "off"),
+  // Segundo factor del personal (SEG-01). Obligatorio en producción: sin él la sesión solo sirve para
+  // activarlo. En desarrollo y pruebas queda opcional para no frenar la demo local.
+  // VER-01: versión mínima por plataforma de cliente, en JSON. Vacío: sin mínimas.
+  MIN_CLIENT_VERSIONS: z.string().max(500).optional(),
+  STAFF_MFA: z.enum(["required", "optional"]).default(process.env.NODE_ENV === "production" ? "required" : "optional"),
   // Pedidos sin pagar o sin confirmar que una misma persona (documento, celular o correo) puede tener a la vez.
   // En las pruebas automáticas se sube a 20: muchas crean varios pedidos del mismo cliente de prueba.
   // Cloudflare Turnstile (C70): CAPTCHA en registro y pedidos nuevos si están las dos claves.
@@ -43,6 +52,12 @@ export const envSchema = z.object({
   SMTP_USER: z.string().min(1).optional(),
   SMTP_PASSWORD: z.string().min(1).optional(),
   MAIL_FROM: z.string().min(3).optional(),
+  // CU02, decisión del propietario del 16/10/2026: en la fase de cuentas la verificación de correo es
+  // simulada. «simulated» guarda los mensajes en un buzón de prueba en memoria en vez de enviarlos;
+  // solo se admite fuera de producción o en el perfil de staging de cuentas (ver envProblems).
+  MAIL_MODE: z.enum(["smtp", "simulated"]).default("smtp"),
+  // Perfil de despliegue que fija el arranque de staging (scripts/staging-guards.mjs).
+  RAWENERGY_DEPLOYMENT: z.string().max(60).optional(),
   // A donde llegan los avisos de pedido nuevo. Si se omite, se usa ADMIN_EMAIL.
   MAIL_OPERATOR: z.string().email().optional(),
   STORE_NAME: z.string().min(2).max(60).default("RawEnergy EC"),
@@ -73,8 +88,21 @@ export const envSchema = z.object({
   TELEGRAM_API_URL: z.string().url().optional()
 });
 
+/** Combinaciones que el esquema por campo no detecta. Vacío: configuración coherente. */
+export function envProblems(data: z.infer<typeof envSchema>) {
+  const problems: string[] = [];
+  if (data.MAIL_MODE === "simulated") {
+    if (data.SMTP_HOST) problems.push("MAIL_MODE=simulated no admite SMTP_HOST: elige un solo canal de correo");
+    // Un buzón simulado en producción real dejaría a los clientes sin verificación ni recuperación.
+    if (data.NODE_ENV === "production" && data.RAWENERGY_DEPLOYMENT !== "azure-staging-cuentas") problems.push("El correo simulado solo se admite en el perfil azure-staging-cuentas");
+  }
+  return problems;
+}
+
 const parsed = envSchema.safeParse(process.env);
 if (!parsed.success) throw new Error(`Configuración inválida: ${parsed.error.message}`);
+const problems = envProblems(parsed.data);
+if (problems.length) throw new Error(`Configuración inválida: ${problems.join("; ")}`);
 
 const isProduction = parsed.data.NODE_ENV === "production";
 

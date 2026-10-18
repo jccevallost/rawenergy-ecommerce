@@ -1,9 +1,16 @@
 import { unitOfWork, registerMemoryStore, operationContext } from "../lib/unitOfWork.js";
 import { supplyService } from "./supply.service.js";
-import { normalizedLots, recordMovement, type StockLot } from "./stockLedger.service.js";
+import { normalizedLots, recordMovement, sameLayer, withLayer, type StockLot } from "./stockLedger.service.js";
+import { randomUUID } from "node:crypto";
 import mongoose from "mongoose";
+import { setMongoPersistence, usesMongo } from "../lib/persistence.js";
 import { z } from "zod";
-const lotPositionSchema = z.object({ warehouseId:z.string().min(1), lot:z.string().min(1), expiresOn:z.string(), unitCost:z.number().nonnegative().nullable() }).strict();
+// `layerId` identifica la capa exacta (M40). Sin ella se busca por atributos, como antes, y se
+// rechaza la operación si esos atributos corresponden a varias capas.
+const lotPositionSchema = z.object({ warehouseId:z.string().min(1), lot:z.string().min(1), expiresOn:z.string(), unitCost:z.number().nonnegative().nullable(), layerId:z.string().min(1).max(120).optional() }).strict();
+type LotPosition = z.infer<typeof lotPositionSchema>;
+const atPosition = (lot: StockLot, p: LotPosition) => lot.warehouseId === p.warehouseId && (p.layerId ? lot.layerId === p.layerId : lot.lot === p.lot && lot.expiresOn === p.expiresOn && lot.unitCost === p.unitCost);
+const ecuadorToday = () => new Date(Date.now() - 5 * 3600000).toISOString().slice(0, 10);
 const stockAdjustmentSchema = z.object({ position:lotPositionSchema.optional(), expectedLotQuantity:z.number().int().nonnegative().optional(), productId: z.string().min(1), sku: z.string().min(3), delta: z.number().int().min(-100000).max(100000), expectedStock: z.number().int().nonnegative(), reorderPoint: z.number().int().nonnegative().max(100000).optional(), reason: z.string().trim().min(5).max(300) }).strict();
 import { demoProducts } from "../data/demoProducts.js";
 import { ProductModel } from "../models/Product.js";
@@ -57,7 +64,7 @@ let demoSequence = 0;
 const demoId = () => `demo-${Date.now()}-${++demoSequence}`;
 
 class ProductService {
-  private useMongo = false;
+  private get useMongo() { return usesMongo(); }
   private demo = demoProducts.map((product, index) => withDerivedFields(product, `demo-${index + 1}`));
 
   constructor() { registerMemoryStore(() => this.demo, (value) => { this.demo = value; }); }
@@ -72,7 +79,7 @@ class ProductService {
     await mongoose.connect(uri);
     const hello = await mongoose.connection.db!.admin().command({ hello: 1 });
     if (!hello.setName && hello.msg !== "isdbgrid") { await mongoose.disconnect(); throw new Error("MongoDB requiere un replica set (Atlas o rs0 local) para guardar compras, pedidos e inventario en transacciones."); }
-    this.useMongo = true;
+    setMongoPersistence(true);
     return { mode: "mongodb" as const };
   }
 
@@ -119,18 +126,20 @@ class ProductService {
     if (options.expectedStock !== undefined && options.expectedStock !== variant.stock) throw new Error("El stock cambió. Recarga antes de continuar.");
     const before = variant.stock;
     const lots = normalizedLots(variant as unknown as { stock: number; lots?: StockLot[] });
-    if (options.position && options.expectedLotQuantity !== undefined) {
-      const p=options.position;
-      const quantity=lots.filter(l=>l.warehouseId===p.warehouseId&&l.lot===p.lot&&l.expiresOn===p.expiresOn&&l.unitCost===p.unitCost).reduce((sum,l)=>sum+l.quantity,0);
-      if(quantity!==options.expectedLotQuantity)throw new Error("El lote cambió. Actualiza las existencias antes de ajustar.");
+    if (options.position) {
+      const p = options.position, matches = lots.filter(l => atPosition(l, p));
+      if (!p.layerId && new Set(matches.map(l => l.layerId)).size > 1) throw new Error("Hay varios lotes con ese nombre. Actualiza el inventario y elige la fila exacta.");
+      if (options.expectedLotQuantity !== undefined && matches.reduce((sum, l) => sum + l.quantity, 0) !== options.expectedLotQuantity) throw new Error("El lote cambió. Actualiza las existencias antes de ajustar.");
     }
     const allocation: StockLot[] = [];
     const today = new Date(Date.now() - 5 * 3600000).toISOString().slice(0, 10);
     if (delta < 0) {
       let pending = -delta;
-      lots.sort((a, b) => (a.expiresOn || "9999").localeCompare(b.expiresOn || "9999"));
+      // Primero lo que vence antes (FEFO); a igual vencimiento, la capa recibida antes. Fecha
+      // desconocida ("") va primero: son saldos anteriores al registro de capas.
+      lots.sort((a, b) => (a.expiresOn || "9999").localeCompare(b.expiresOn || "9999") || (a.receivedOn ?? "").localeCompare(b.receivedOn ?? "") || (a.layerId ?? "").localeCompare(b.layerId ?? ""));
       for (const lot of lots) {
-        if(options.position && (lot.warehouseId!==options.position.warehouseId||lot.lot!==options.position.lot||lot.expiresOn!==options.position.expiresOn||lot.unitCost!==options.position.unitCost))continue;
+        if (options.position && !atPosition(lot, options.position)) continue;
         if (options.warehouseId && lot.warehouseId !== options.warehouseId || options.lot && lot.lot !== options.lot || !options.allowExpired && lot.expiresOn && lot.expiresOn < today) continue;
         const quantity = Math.min(pending, lot.quantity);
         if (quantity > 0) { allocation.push({ ...lot, quantity }); lot.quantity -= quantity; pending -= quantity; }
@@ -138,9 +147,13 @@ class ProductService {
       }
       if (pending) throw new Error(`Stock insuficiente o vencido: ${sku}`);
     } else if (delta > 0) {
-      const additions = options.exactLots ?? (options.position ? [{...options.position,quantity:delta}] : [{ warehouseId: options.warehouseId ?? "main", lot: options.lot || "SIN-LOTE", expiresOn: options.expiresOn ?? "", quantity: delta, unitCost: options.unitCost ?? null }]);
-      if (additions.reduce((sum, l) => sum + l.quantity, 0) !== delta) throw new Error("Cantidades de lote inconsistentes");
-      for (const add of additions) { const found = lots.find((l) => l.warehouseId === add.warehouseId && l.lot === add.lot && l.expiresOn === add.expiresOn && l.unitCost === add.unitCost); if (found) found.quantity += add.quantity; else lots.push({ ...add }); allocation.push({ ...add }); }
+      // Una entrada solo se suma a su misma capa: devoluciones y traslados traen la capa en
+      // `exactLots`; un ajuste por posición entra a esa capa; cualquier otra entrada es una capa
+      // nueva con fecha de hoy, para no rejuvenecer unidades anteriores.
+      const position = options.position, existing = position ? lots.find(l => atPosition(l, position)) : undefined;
+      const additions = (options.exactLots ?? (position ? [{ ...(existing ?? withLayer({ ...position, quantity: 0 })), warehouseId: position.warehouseId, quantity: delta }] : [{ warehouseId: options.warehouseId ?? "main", lot: options.lot || "SIN-LOTE", expiresOn: options.expiresOn ?? "", quantity: delta, unitCost: options.unitCost ?? null, layerId: `A-${randomUUID()}`, receivedOn: ecuadorToday(), source: "ADJUSTMENT" as const }])).map(withLayer);
+      if (additions.some(l => !Number.isInteger(l.quantity) || l.quantity <= 0) || additions.reduce((sum, l) => sum + l.quantity, 0) !== delta) throw new Error("Cantidades de lote inconsistentes");
+      for (const add of additions) { const found = lots.find((l) => sameLayer(l, add)); if (found) found.quantity += add.quantity; else lots.push({ ...add }); allocation.push({ ...add }); }
     }
     await supplyService.lockWarehouses(allocation.map(l => l.warehouseId), Boolean(options.allowExpired && delta < 0));
     const after = before + delta;
@@ -153,7 +166,7 @@ class ProductService {
     let running = before;
     for (const part of allocation) {
       const change = delta < 0 ? -part.quantity : part.quantity;
-      await recordMovement({ productId, sku, title: product.title, delta: change, before: running, after: running + change, warehouseId: part.warehouseId, lot: part.lot, expiresOn: part.expiresOn, unitCost: part.unitCost, reason: options.reason });
+      await recordMovement({ productId, sku, title: product.title, delta: change, before: running, after: running + change, warehouseId: part.warehouseId, lot: part.lot, expiresOn: part.expiresOn, unitCost: part.unitCost, layerId: part.layerId, receivedOn: part.receivedOn, source: part.source, purchaseId: part.purchaseId, purchaseLine: part.purchaseLine, reason: options.reason });
       running += change;
     }
     return allocation;
@@ -320,11 +333,13 @@ class ProductService {
     const old = id ? await this.get(id) : null;
     if (id && expectedRevision !== undefined && (old?.revision ?? 0) !== expectedRevision) throw new Error("Otra persona modificó esta ficha. Recarga antes de guardar; tus cambios siguen en el borrador.");
     if (old?.variants.some(v => v.stock > 0 && !payload.variants.some(next => next.sku === v.sku))) throw new Error("No puedes quitar ni cambiar el SKU de una variante con stock. Realiza primero un ajuste o conserva la variante.");
-    const initialMovements = async (productId: string) => { for (const v of payload.variants) { if (!old?.variants.some(previous => previous.sku === v.sku)) await recordMovement({ productId, sku: v.sku, title: payload.title, delta: v.stock, before: 0, after: v.stock, warehouseId: "main", lot: "INICIAL", expiresOn: "", unitCost: null, reason: "Stock inicial de producto" }); } };
+    const initialMovements = async (productId: string) => { for (const v of payload.variants) { if (!old?.variants.some(previous => previous.sku === v.sku)) await recordMovement(withLayer({ productId, sku: v.sku, title: payload.title, delta: v.stock, before: 0, after: v.stock, warehouseId: "main", lot: "INICIAL", expiresOn: "", unitCost: null, reason: "Stock inicial de producto" })); } };
     const preserved: Array<typeof payload.variants[number] & { lots?: StockLot[] }> = [];
     for (const v of payload.variants) {
       const previous = old?.variants.find((x) => x.sku === v.sku);
-      if (previous && previous.stock !== v.stock) await this.changeStock(id!, v.sku, v.stock - previous.stock, { reason: "Cambio desde ficha de producto", allowExpired: true });
+      // M42: el stock de una presentación existente no se cambia desde la ficha; una entrada sin origen no
+      // tendría compra, fecha ni costo. Se usa una compra, un ajuste de lote con motivo o un traslado.
+      if (previous && previous.stock !== v.stock) throw new Error(`El stock de ${v.sku} no se cambia desde la ficha. Usa una compra, un ajuste de lote con motivo o un traslado: así queda registrado su origen.`);
       const refreshed = previous && id ? (await this.get(id))?.variants.find((x) => x.sku === v.sku) : null;
       preserved.push({ ...v, lots: refreshed ? normalizedLots(refreshed as unknown as { stock: number; lots?: StockLot[] }) : normalizedLots(v) });
     }
@@ -401,7 +416,7 @@ class ProductService {
       let left = variant.stock, arrived = 0;
       for (const lot of variant.lots ?? []) {
         if (!lot.quantity) continue;
-        const base = { sku: variant.sku, warehouseId: lot.warehouseId, lot: lot.lot, expiresOn: lot.expiresOn, unitCost: lot.unitCost, reason };
+        const base = { sku: variant.sku, warehouseId: lot.warehouseId, lot: lot.lot, expiresOn: lot.expiresOn, unitCost: lot.unitCost, layerId: lot.layerId, receivedOn: lot.receivedOn, source: lot.source, purchaseId: lot.purchaseId, purchaseLine: lot.purchaseLine, reason };
         await recordMovement({ ...base, productId: sourceId, title: source.title, delta: -lot.quantity, before: left, after: left - lot.quantity }); left -= lot.quantity;
         await recordMovement({ ...base, productId: targetId, title: target.title, delta: lot.quantity, before: arrived, after: arrived + lot.quantity }); arrived += lot.quantity;
       }

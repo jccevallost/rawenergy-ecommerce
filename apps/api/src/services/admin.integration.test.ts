@@ -71,7 +71,7 @@ describe("Contrato administrativo y auditoría", () => {
     await authService.endSession((await authService.me(a.token))!);expect(await authService.me(a.token)).toBeNull();expect(await authService.me(b.token)).toBeTruthy();
   });
   it("deniega consultas sensibles a invitados y clientes", async () => {
-    const customer = (await authService.register({ name: "Cliente prueba", email: "customer-test@example.com", password: "Test1234!" })).user;
+    const customer = (await authService.createVerifiedCustomer({ name: "Cliente prueba", email: "customer-test@example.com", password: "Test1234!" })).user;
     for (const user of [null, customer]) {
       for (const query of ['{ managementDashboard(filters: {year: 2026}) }', '{ auditEvents }', '{ accounts }', '{ databaseRecords(entity: "users") }']) expect((await execute(query, {}, user)).errors).toBeDefined();
     }
@@ -81,6 +81,8 @@ describe("Contrato administrativo y auditoría", () => {
     const created = await execute('mutation($input: JSON!) { saveAccount(input: $input) { id name email } }', { input });
     expect(created.errors).toBeUndefined();
     const id = (created.data?.saveAccount as { id: string }).id;
+    // CU04: una cuenta de cliente creada en el panel no tiene el correo confirmado; aquí se simula la confirmación.
+    (authService as unknown as { memoryUsers: Array<{ id: string; emailVerifiedAt?: Date }> }).memoryUsers.find((user) => user.id === id)!.emailVerifiedAt = new Date();
     const session = await authService.login({ email: input.email, password: input.password });
     const changed = await execute('mutation($id: ID!, $input: JSON!) { saveAccount(id: $id, input: $input) { id name email status } }', { id, input: { ...input, name: "Editado", password: "New-secret-123" } });
     expect(changed.errors).toBeUndefined(); expect(await authService.me(session.token)).toBeNull();

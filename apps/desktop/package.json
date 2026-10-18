@@ -1,0 +1,14 @@
+{
+  "name": "@vital-forge/desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Programa de Windows del panel RawEnergy (WIN-01): abre el panel publicado en una ventana propia.",
+  "scripts": {
+    "icons": "tauri icon src-tauri/icons/app-icon.png -o src-tauri/icons",
+    "build:windows": "node scripts/build-windows.mjs",
+    "build:mac": "tauri build --bundles app"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.1"
+  }
+}
